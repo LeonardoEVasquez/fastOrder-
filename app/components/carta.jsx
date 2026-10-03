@@ -1,263 +1,119 @@
 "use client";
 
 import Cobro from "./cobro";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PersonalizarProducto from "./personalizar-producto";
 import Configuracion from "./configuracion";
-
-const productos = {
-  Hamburguesas: [
-    {
-      id: 1,
-      nombre: "Cheeseburger",
-      precio: 12,
-      imagen:
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 2,
-      nombre: "Doble Burger",
-      precio: 16,
-      imagen:
-        "https://images.unsplash.com/photo-1553979459-d2229ba7433b?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 3,
-      nombre: "Burger Clásica",
-      precio: 13,
-      imagen:
-        "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 4,
-      nombre: "Burger BBQ",
-      precio: 15,
-      imagen:
-        "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 5,
-      nombre: "Burger Crispy",
-      precio: 14,
-      imagen:
-        "https://images.unsplash.com/photo-1606755962773-d324e0a13086?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 6,
-      nombre: "Burger Especial",
-      precio: 18,
-      imagen:
-        "https://images.unsplash.com/photo-1565299507177-b0ac66763828?auto=format&fit=crop&w=500&q=80",
-    },
-  ],
-
-  Salchipapas: [
-    {
-      id: 7,
-      nombre: "Salchipapa Clásica",
-      precio: 10,
-      imagen:
-        "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 8,
-      nombre: "Salchipapa Grande",
-      precio: 15,
-      imagen:
-        "https://images.unsplash.com/photo-1630384060421-cb20d0e0649d?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 9,
-      nombre: "Salchipapa Especial",
-      precio: 18,
-      imagen:
-        "https://images.unsplash.com/photo-1598679253544-2c97992403ea?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 10,
-      nombre: "Salchipapa con Huevo",
-      precio: 14,
-      imagen:
-        "https://images.unsplash.com/photo-1623238913973-21e45cced554?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 11,
-      nombre: "Salchipollo",
-      precio: 17,
-      imagen:
-        "https://images.unsplash.com/photo-1600891964092-4316c288032e?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 12,
-      nombre: "Salchipapa BBQ",
-      precio: 16,
-      imagen:
-        "https://images.unsplash.com/photo-1541592106381-b31e9677c0e5?auto=format&fit=crop&w=500&q=80",
-    },
-  ],
-
-  Alitas: [
-    {
-      id: 13,
-      nombre: "Alitas BBQ",
-      precio: 16,
-      imagen:
-        "https://polloseldorado.co/wp-content/uploads/2023/04/Imagene-2-1024x536.jpg",
-    },
-    {
-      id: 14,
-      nombre: "Alitas Picantes",
-      precio: 17,
-      imagen: "/Image/AlitasPicantes.jpg",
-    },
-    {
-      id: 15,
-      nombre: "Alitas Crispy",
-      precio: 18,
-      imagen:
-        "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 16,
-      nombre: "Alitas Miel",
-      precio: 17,
-      imagen:
-        "https://images.unsplash.com/photo-1527477396000-e27163b481c2?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 17,
-      nombre: "Alitas Teriyaki",
-      precio: 18,
-      imagen: "/Image/AlitasTeriyaki.jpg",
-    },
-    {
-      id: 18,
-      nombre: "Alitas Especiales",
-      precio: 20,
-      imagen:
-        "https://images.unsplash.com/photo-1567620832903-9fc6debc209f?auto=format&fit=crop&w=500&q=80",
-    },
-  ],
-
-  Bebidas: [
-    {
-      id: 19,
-      nombre: "Pepsi",
-      precio: 4,
-      imagen:
-        "https://images.unsplash.com/photo-1629203849820-fdd70d49c38e?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 20,
-      nombre: "Inca Kola",
-      precio: 4,
-      imagen: "/Image/IncaKola.jpeg",
-    },
-    {
-      id: 21,
-      nombre: "Coca Cola",
-      precio: 4,
-      imagen:
-        "https://images.unsplash.com/photo-1554866585-cd94860890b7?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 22,
-      nombre: "Limonada",
-      precio: 5,
-      imagen: "/Image/Limonada.jpeg",
-    },
-    {
-      id: 23,
-      nombre: "Agua",
-      precio: 3,
-      imagen:
-        "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 24,
-      nombre: "Jugo Natural",
-      precio: 6,
-      imagen:
-        "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=500&q=80",
-    },
-  ],
-
-  Postres: [
-    {
-      id: 25,
-      nombre: "Pie de Manzana",
-      precio: 7,
-      imagen:
-        "https://images.unsplash.com/photo-1535920527002-b35e96722eb9?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 26,
-      nombre: "Cheesecake",
-      precio: 8,
-      imagen:
-        "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 27,
-      nombre: "Brownie",
-      precio: 7,
-      imagen: "/Image/Brownie.jpg",
-    },
-    {
-      id: 28,
-      nombre: "Torta de Chocolate",
-      precio: 9,
-      imagen:
-        "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 29,
-      nombre: "Helado",
-      precio: 6,
-      imagen:
-        "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=500&q=80",
-    },
-    {
-      id: 30,
-      nombre: "Brownie con Helado",
-      precio: 10,
-      imagen:
-        "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&w=500&q=80",
-    },
-  ],
-};
-
-const categorias = [
-  "Hamburguesas",
-  "Salchipapas",
-  "Alitas",
-  "Bebidas",
-  "Postres",
-];
+import ModalProducto from "./modal-producto";
+import GestionProductos from "./gestion-productos";
+import { supabase } from "@/lib/supabase/client";
 
 export default function Carta() {
   // ============================================
-  // NAVEGACIÓN
+  // ESTADOS Y NAVEGACIÓN
   // ============================================
 
   const [vistaActual, setVistaActual] = useState("carta");
-
-  const [categoriaActiva, setCategoriaActiva] =
-    useState("Hamburguesas");
+  const [categoriaActiva, setCategoriaActiva] = useState("Hamburguesas");
+  const [categorias, setCategorias] = useState([]);
+  const [productos, setProductos] = useState([]);
+  const [cargando, setCargando] = useState(true);
 
   const [pedido, setPedido] = useState([]);
+  const [productoSeleccionado, setProductoSeleccionado] = useState(null);
+  const [tipoPersonalizacion, setTipoPersonalizacion] = useState(null);
+  const [mostrarModal, setMostrarModal] = useState(false);
 
-  const [productoSeleccionado, setProductoSeleccionado] =
-    useState(null);
+  // Modal para CRUD de producto (Crear / Editar)
+  const [modalProducto, setModalProducto] = useState({
+    abierto: false,
+    modo: "crear",
+    producto: null,
+  });
 
-  const [tipoPersonalizacion, setTipoPersonalizacion] =
-    useState(null);
+  // ============================================
+  // CARGA DE DATOS DESDE SUPABASE
+  // ============================================
 
-  const productosActuales =
-    productos[categoriaActiva];
+  const cargarDatos = async () => {
+    try {
+      setCargando(true);
+      const { data: dataCats } = await supabase
+        .from("categorias")
+        .select("*")
+        .order("orden", { ascending: true });
 
-  const [mostrarModal, setMostrarModal] =
-    useState(false);
+      const { data: dataProds } = await supabase
+        .from("productos")
+        .select("*")
+        .order("id", { ascending: true });
+
+      if (dataCats && dataCats.length > 0) {
+        setCategorias(dataCats);
+        setCategoriaActiva((prev) => prev || dataCats[0].nombre);
+      }
+      if (dataProds) {
+        setProductos(dataProds);
+      }
+    } catch (err) {
+      console.error("Error al cargar datos de Supabase:", err);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  // Categoría activa como objeto
+  const catActivaObj = categorias.find(
+    (c) => (typeof c === "string" ? c : c.nombre) === categoriaActiva
+  );
+
+  // Productos filtrados por categoría activa
+  const productosActuales = productos.filter((p) => {
+    if (!catActivaObj?.id) return true;
+    return p.categoria_id === catActivaObj.id;
+  });
+
+  // ============================================
+  // ACCIONES CRUD DE PRODUCTOS
+  // ============================================
+
+  const handleProductoGuardado = (productoGuardado, modo) => {
+    if (!productoGuardado) {
+      cargarDatos();
+      return;
+    }
+    if (modo === "crear") {
+      setProductos((prev) => [...prev, productoGuardado]);
+    } else {
+      setProductos((prev) =>
+        prev.map((p) => (p.id === productoGuardado.id ? productoGuardado : p))
+      );
+    }
+  };
+
+  const eliminarProducto = async (e, producto) => {
+    e.stopPropagation();
+    const seguro = window.confirm(
+      `¿Estás seguro de que deseas eliminar "${producto.nombre}" de la carta?`
+    );
+    if (!seguro) return;
+
+    try {
+      const { error } = await supabase
+        .from("productos")
+        .delete()
+        .eq("id", producto.id);
+
+      if (error) throw error;
+      setProductos((prev) => prev.filter((p) => p.id !== producto.id));
+    } catch (err) {
+      alert("Error al eliminar el producto: " + (err.message || err));
+    }
+  };
 
   // ============================================
   // AGREGAR PRODUCTO DIRECTAMENTE
@@ -274,11 +130,11 @@ export default function Carta() {
       if (existente) {
         return pedidoActual.map((item) =>
           item.id === producto.id &&
-          !item.personalizacion
+            !item.personalizacion
             ? {
-                ...item,
-                cantidad: item.cantidad + 1,
-              }
+              ...item,
+              cantidad: item.cantidad + 1,
+            }
             : item
         );
       }
@@ -364,9 +220,9 @@ export default function Carta() {
       pedidoActual.map((item, i) =>
         i === index
           ? {
-              ...item,
-              cantidad: item.cantidad + 1,
-            }
+            ...item,
+            cantidad: item.cantidad + 1,
+          }
           : item
       )
     );
@@ -382,9 +238,9 @@ export default function Carta() {
         .map((item, i) =>
           i === index
             ? {
-                ...item,
-                cantidad: item.cantidad - 1,
-              }
+              ...item,
+              cantidad: item.cantidad - 1,
+            }
             : item
         )
         .filter(
@@ -457,19 +313,17 @@ export default function Carta() {
                   onClick={() =>
                     setVistaActual("carta")
                   }
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-bold transition ${
-                    vistaActual === "carta"
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-bold transition ${vistaActual === "carta"
                       ? "bg-red-500 text-white shadow-lg"
                       : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
+                    }`}
                 >
 
                   <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${
-                      vistaActual === "carta"
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${vistaActual === "carta"
                         ? "bg-white/15"
                         : "bg-slate-800"
-                    }`}
+                      }`}
                   >
                     🍔
                   </span>
@@ -478,18 +332,27 @@ export default function Carta() {
 
                 </button>
 
-                {/* AGREGAR PRODUCTO */}
+                {/* PRODUCTOS (CRUD) */}
 
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white"
+                  onClick={() => setVistaActual("productos")}
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-bold transition ${vistaActual === "productos"
+                      ? "bg-red-500 text-white shadow-lg"
+                      : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                    }`}
                 >
 
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-800 text-lg">
-                    ➕
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${vistaActual === "productos"
+                        ? "bg-white/15"
+                        : "bg-slate-800"
+                      }`}
+                  >
+                    📦
                   </span>
 
-                  <span>Agregar producto</span>
+                  <span>Productos</span>
 
                 </button>
 
@@ -515,19 +378,17 @@ export default function Carta() {
                   onClick={() =>
                     setVistaActual("configuracion")
                   }
-                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition ${
-                    vistaActual === "configuracion"
+                  className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold transition ${vistaActual === "configuracion"
                       ? "bg-red-500 text-white shadow-lg"
                       : "text-slate-300 hover:bg-slate-800 hover:text-white"
-                  }`}
+                    }`}
                 >
 
                   <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${
-                      vistaActual === "configuracion"
+                    className={`flex h-9 w-9 items-center justify-center rounded-lg text-lg ${vistaActual === "configuracion"
                         ? "bg-white/15"
                         : "bg-slate-800"
-                    }`}
+                      }`}
                   >
                     ⚙️
                   </span>
@@ -572,17 +433,47 @@ export default function Carta() {
           <main className="min-w-0 flex-1">
 
             {/* ==================================================
-                VISTA CONFIGURACIÓN
+                VISTA CONFIGURACIÓN O PRODUCTOS O CARTA
             ================================================== */}
 
             {vistaActual === "configuracion" ? (
 
               <Configuracion />
 
+            ) : vistaActual === "productos" ? (
+
+              <GestionProductos
+                categorias={categorias}
+                productos={productos}
+                cargando={cargando}
+                onAbrirModalCrear={() =>
+                  setModalProducto({
+                    abierto: true,
+                    modo: "crear",
+                    producto: null,
+                  })
+                }
+                onAbrirModalEditar={(prod) =>
+                  setModalProducto({
+                    abierto: true,
+                    modo: "editar",
+                    producto: prod,
+                  })
+                }
+                onEliminarProducto={eliminarProducto}
+                onActualizarDisponibilidad={(id, disp) =>
+                  setProductos((prev) =>
+                    prev.map((p) =>
+                      p.id === id ? { ...p, disponible: disp } : p
+                    )
+                  )
+                }
+              />
+
             ) : (
 
               /* ==================================================
-                  VISTA CARTA
+                  VISTA CARTA (TOMA DE PEDIDOS / POS)
               ================================================== */
 
               <div className="p-3 md:p-5 lg:p-6">
@@ -662,27 +553,26 @@ export default function Carta() {
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
 
                           {categorias.map(
-                            (categoria) => {
-
-                              const activa =
-                                categoriaActiva ===
-                                categoria;
+                            (cat) => {
+                              const nombreCat = typeof cat === "string" ? cat : cat.nombre;
+                              const iconoCat = typeof cat === "string" ? "" : cat.icono;
+                              const activa = categoriaActiva === nombreCat;
 
                               return (
                                 <button
-                                  key={categoria}
+                                  key={cat.id || nombreCat}
                                   onClick={() =>
                                     setCategoriaActiva(
-                                      categoria
+                                      nombreCat
                                     )
                                   }
-                                  className={`relative rounded-xl px-3 py-3 text-sm font-bold transition-all md:text-base ${
-                                    activa
+                                  className={`relative flex items-center justify-center gap-1.5 rounded-xl px-3 py-3 text-sm font-bold transition-all md:text-base ${activa
                                       ? "bg-red-500 text-white shadow-md shadow-red-200"
                                       : "border border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700"
-                                  }`}
+                                    }`}
                                 >
-                                  {categoria}
+                                  {iconoCat && <span>{iconoCat}</span>}
+                                  <span>{nombreCat}</span>
 
                                   {activa && (
                                     <span className="absolute bottom-0 left-1/2 h-1 w-8 -translate-x-1/2 rounded-t-full bg-white/80" />
@@ -707,7 +597,14 @@ export default function Carta() {
                           </h2>
 
                           <p className="mt-1 text-sm text-slate-500">
-                            {productosActuales.length} productos disponibles
+                            {cargando ? (
+                              <span className="inline-flex items-center gap-1 text-blue-600">
+                                <span className="inline-block h-3 w-3 animate-spin rounded-full border border-blue-600 border-t-transparent"></span>
+                                Sincronizando con Supabase...
+                              </span>
+                            ) : (
+                              `${productosActuales.length} productos disponibles`
+                            )}
                           </p>
 
                         </div>
@@ -716,78 +613,114 @@ export default function Carta() {
 
                       {/* PRODUCTOS */}
 
-                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
+                      {cargando && productos.length === 0 ? (
+                        <div className="flex h-48 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50">
+                          <p className="font-semibold text-slate-500">
+                            Cargando carta desde Supabase...
+                          </p>
+                        </div>
+                      ) : productosActuales.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center">
+                          <span className="text-4xl">🍽️</span>
+                          <p className="mt-2 text-base font-bold text-slate-700">
+                            No hay productos en esta categoría
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            Ve a la pestaña &ldquo;Productos&rdquo; para agregar productos al menú.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
 
-                        {productosActuales.map(
-                          (producto) => (
-
-                            <button
-                              key={producto.id}
-                              onClick={() =>
-                                seleccionarProducto(
-                                  producto
-                                )
-                              }
-                              className="group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-200 hover:-translate-y-1 hover:border-blue-400 hover:shadow-lg"
-                            >
-
-                              {/* IMAGEN */}
-
-                              <div className="relative h-36 overflow-hidden bg-slate-100 md:h-40">
-
-                                <img
-                                  src={
-                                    producto.imagen
+                          {productosActuales.map(
+                            (producto) => {
+                              const disponible = producto.disponible !== false;
+                              return (
+                                <button
+                                  key={producto.id}
+                                  type="button"
+                                  disabled={!disponible}
+                                  onClick={() =>
+                                    seleccionarProducto(
+                                      producto
+                                    )
                                   }
-                                  alt={
-                                    producto.nombre
-                                  }
-                                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                />
+                                  className={`group overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-sm transition-all duration-200 ${!disponible
+                                      ? "opacity-50 cursor-not-allowed"
+                                      : "hover:-translate-y-1 hover:border-blue-400 hover:shadow-lg"
+                                    }`}
+                                >
 
-                                {/* PRECIO */}
+                                  {/* IMAGEN */}
 
-                                <div className="absolute right-2 top-2 rounded-full bg-white px-3 py-1 shadow-md">
+                                  <div className="relative h-36 overflow-hidden bg-slate-100 md:h-40">
 
-                                  <span className="text-sm font-black text-blue-600">
-                                    S/{" "}
-                                    {producto.precio.toFixed(
-                                      2
+                                    <img
+                                      src={
+                                        producto.imagen
+                                      }
+                                      alt={
+                                        producto.nombre
+                                      }
+                                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                      onError={(e) => {
+                                        e.currentTarget.src =
+                                          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
+                                      }}
+                                    />
+
+                                    {/* PRECIO */}
+
+                                    <div className="absolute right-2 top-2 rounded-full bg-white px-3 py-1 shadow-md">
+
+                                      <span className="text-sm font-black text-blue-600">
+                                        S/{" "}
+                                        {Number(
+                                          producto.precio
+                                        ).toFixed(2)}
+                                      </span>
+
+                                    </div>
+
+                                    {!disponible && (
+                                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                        <span className="rounded-lg bg-rose-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+                                          Agotado
+                                        </span>
+                                      </div>
                                     )}
-                                  </span>
 
-                                </div>
+                                  </div>
 
-                              </div>
+                                  {/* INFORMACIÓN */}
 
-                              {/* INFORMACIÓN */}
+                                  <div className="p-3">
 
-                              <div className="p-3">
+                                    <h2 className="line-clamp-1 text-base font-bold text-slate-800 md:text-lg">
+                                      {producto.nombre}
+                                    </h2>
 
-                                <h2 className="line-clamp-1 text-base font-bold text-slate-800 md:text-lg">
-                                  {producto.nombre}
-                                </h2>
+                                    <div className="mt-3 flex items-center justify-between">
 
-                                <div className="mt-3 flex items-center justify-between">
+                                      <span className="text-sm text-slate-400">
+                                        {!disponible ? "No disponible" : "Pedir / Personalizar"}
+                                      </span>
 
-                                  <span className="text-sm text-slate-400">
-                                    Ver detalles
-                                  </span>
+                                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 font-bold text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
+                                        +
+                                      </span>
 
-                                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 font-bold text-blue-600 transition group-hover:bg-blue-600 group-hover:text-white">
-                                    +
-                                  </span>
+                                    </div>
 
-                                </div>
+                                  </div>
 
-                              </div>
+                                </button>
+                              );
+                            }
+                          )}
 
-                            </button>
-
-                          )
-                        )}
-
-                      </div>
+                        </div>
+                      )}
 
                     </div>
 
@@ -872,50 +805,50 @@ export default function Carta() {
 
                                       {item.personalizacion
                                         ?.papas && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Papas:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .papas
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Papas:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .papas
+                                            }
+                                          </p>
+                                        )}
 
                                       {item.personalizacion
                                         ?.carne && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Carne:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .carne
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Carne:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .carne
+                                            }
+                                          </p>
+                                        )}
 
                                       {item.personalizacion
                                         ?.ensalada && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          {
-                                            item
-                                              .personalizacion
-                                              .ensalada
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            {
+                                              item
+                                                .personalizacion
+                                                .ensalada
+                                            }
+                                          </p>
+                                        )}
 
                                       {item.personalizacion
                                         ?.modalidad && (
-                                        <p className="mt-1 text-xs font-semibold text-gray-600">
-                                          Modalidad:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .modalidad
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs font-semibold text-gray-600">
+                                            Modalidad:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .modalidad
+                                            }
+                                          </p>
+                                        )}
 
                                       {/* CREMAS HAMBURGUESA */}
 
@@ -930,10 +863,10 @@ export default function Carta() {
                                               .personalizacion
                                               .cremas
                                               .length >
-                                            0
+                                              0
                                               ? item.personalizacion.cremas.join(
-                                                  ", "
-                                                )
+                                                ", "
+                                              )
                                               : "Ninguna"}
                                           </p>
                                         )}
@@ -942,15 +875,15 @@ export default function Carta() {
 
                                       {item.personalizacion
                                         ?.observacion && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Observación:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .observacion
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Observación:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .observacion
+                                            }
+                                          </p>
+                                        )}
 
                                       {/* SALCHIPAPAS */}
 
@@ -959,58 +892,58 @@ export default function Carta() {
                                         ?.modalidad &&
                                         item.personalizacion
                                           ?.cremas && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Cremas:{" "}
-                                          {item
-                                            .personalizacion
-                                            .cremas
-                                            .length > 0
-                                            ? item.personalizacion.cremas.join(
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Cremas:{" "}
+                                            {item
+                                              .personalizacion
+                                              .cremas
+                                              .length > 0
+                                              ? item.personalizacion.cremas.join(
                                                 ", "
                                               )
-                                            : "Ninguna"}
-                                        </p>
-                                      )}
+                                              : "Ninguna"}
+                                          </p>
+                                        )}
 
                                       {/* BEBIDAS */}
 
                                       {item.personalizacion
                                         ?.temperatura && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Temperatura:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .temperatura
-                                          }
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Temperatura:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .temperatura
+                                            }
+                                          </p>
+                                        )}
 
                                       {/* ALITAS */}
 
                                       {item.personalizacion
                                         ?.porcion && (
-                                        <p className="mt-1 text-xs font-semibold text-gray-600">
-                                          Porción:{" "}
-                                          {
-                                            item
-                                              .personalizacion
-                                              .porcion
-                                          }{" "}
-                                          alitas
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs font-semibold text-gray-600">
+                                            Porción:{" "}
+                                            {
+                                              item
+                                                .personalizacion
+                                                .porcion
+                                            }{" "}
+                                            alitas
+                                          </p>
+                                        )}
 
                                       {item.personalizacion
                                         ?.salsas
                                         ?.length > 0 && (
-                                        <p className="mt-1 text-xs text-gray-500">
-                                          Salsas:{" "}
-                                          {item.personalizacion.salsas.join(
-                                            ", "
-                                          )}
-                                        </p>
-                                      )}
+                                          <p className="mt-1 text-xs text-gray-500">
+                                            Salsas:{" "}
+                                            {item.personalizacion.salsas.join(
+                                              ", "
+                                            )}
+                                          </p>
+                                        )}
 
                                       {/* PRECIO */}
 
@@ -1132,6 +1065,10 @@ export default function Carta() {
                               <Cobro
                                 pedido={pedido}
                                 total={total}
+                                onPedidoExitoso={() => {
+                                  setPedido([]);
+                                  setMostrarModal(false);
+                                }}
                               />
 
                               <button
@@ -1183,6 +1120,19 @@ export default function Carta() {
             onCancelar={cerrarModal}
           />
         )}
+
+      {/* MODAL CRUD PRODUCTO (CREAR / EDITAR) */}
+      <ModalProducto
+        abierto={modalProducto.abierto}
+        modo={modalProducto.modo}
+        producto={modalProducto.producto}
+        categorias={categorias}
+        categoriaActivaId={catActivaObj?.id}
+        onCerrar={() =>
+          setModalProducto((prev) => ({ ...prev, abierto: false }))
+        }
+        onGuardado={handleProductoGuardado}
+      />
 
     </>
   );

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 
-export default function Cobro({ pedido, total }) {
+export default function Cobro({ pedido, total, onPedidoExitoso }) {
   const [tipoPedido, setTipoPedido] = useState("Llevar");
   const [nombreCliente, setNombreCliente] = useState("");
   const [metodoPago, setMetodoPago] = useState("Efectivo");
@@ -10,11 +11,67 @@ export default function Cobro({ pedido, total }) {
 
   // Controla la aparición del modal de confirmación
   const [mostrarModal, setMostrarModal] = useState(false);
+  const [guardandoPedido, setGuardandoPedido] = useState(false);
 
   const vuelto =
     metodoPago === "Efectivo"
       ? efectivoRecibido - total
       : 0;
+
+  const confirmarPedido = async () => {
+    try {
+      setGuardandoPedido(true);
+      const correlativo = `PED-${Date.now().toString().slice(-4)}`;
+
+      // 1. Guardar en la tabla pedidos
+      const { data: pedidoData, error: errPedido } = await supabase
+        .from("pedidos")
+        .insert([
+          {
+            numero_pedido: correlativo,
+            cliente: nombreCliente.trim() || "Cliente General",
+            tipo_pedido: tipoPedido,
+            metodo_pago: metodoPago,
+            total: total,
+            efectivo_recibido: metodoPago === "Efectivo" ? efectivoRecibido : total,
+            vuelto: Math.max(vuelto, 0),
+            estado: "Pendiente",
+          },
+        ]);
+
+      if (errPedido) throw errPedido;
+
+      const pedidoId = pedidoData?.[0]?.id;
+
+      // 2. Guardar en la tabla detalle_pedidos
+      if (pedidoId && pedido.length > 0) {
+        const detalles = pedido.map((item) => ({
+          pedido_id: pedidoId,
+          producto_id: item.id || null,
+          nombre_producto: item.nombre,
+          precio_unitario: item.precio,
+          cantidad: item.cantidad,
+          subtotal: item.precio * item.cantidad,
+          personalizacion: item.personalizacion || {},
+        }));
+
+        await supabase.from("detalle_pedidos").insert(detalles);
+      }
+
+      setMostrarModal(false);
+      window.print();
+
+      if (onPedidoExitoso) {
+        onPedidoExitoso();
+      }
+    } catch (err) {
+      console.error("Error al registrar pedido en Supabase:", err);
+      alert("Error al registrar el pedido: " + (err.message || err));
+      window.print();
+    } finally {
+      setGuardandoPedido(false);
+    }
+  };
 
   return (
     /*
@@ -1025,13 +1082,18 @@ export default function Cobro({ pedido, total }) {
 
               <button
                 type="button"
-                onClick={() => {
-                  setMostrarModal(false);
-                  window.print();
-                }}
-                className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 hover:shadow-lg"
+                disabled={guardandoPedido}
+                onClick={confirmarPedido}
+                className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 hover:shadow-lg disabled:opacity-50"
               >
-                Confirmar e Imprimir
+                {guardandoPedido ? (
+                  <>
+                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                    <span>Guardando Pedido...</span>
+                  </>
+                ) : (
+                  <span>Confirmar e Imprimir</span>
+                )}
               </button>
 
             </div>
