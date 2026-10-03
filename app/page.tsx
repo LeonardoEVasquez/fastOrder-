@@ -1,8 +1,6 @@
 import Image from "next/image";
-import Carta from "./components/carta";
+import Acceso from "./components/acceso";
 
 export default function Home() {
-  return (
-   <Carta />
-  );
+  return <Acceso />;
 }
