@@ -2,1108 +2,337 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { detalleItems, textoPersonalizacion, round2 } from "./Personalizacion";
+
+const ENTREGAS = [
+  ["salon", "Salón"],
+  ["llevar", "Para llevar / Delivery"],
+];
+const METODOS = [
+  ["efectivo", "Efectivo"],
+  ["yape", "Yape"],
+  ["plin", "Plin"],
+  ["tarjeta_debito", "T. Débito"],
+  ["tarjeta_credito", "T. Crédito"],
+];
+
+const btn = (activo) =>
+  `rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
+    activo
+      ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
+      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
+  }`;
+
+function Personalizacion({ item }) {
+  const filas = detalleItems(item.personalizacion);
+  if (filas.length === 0) return null;
+  return (
+    <div className="mt-3 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-2">
+      {filas.map(([k, v]) => (
+        <div key={k} className={`rounded-lg px-3 py-2 ${k === "Observación" ? "bg-amber-50 sm:col-span-2" : "bg-slate-50"}`}>
+          <p className="text-xs font-semibold text-slate-400">{k}</p>
+          <p className="break-words text-sm font-bold text-slate-700">{v}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ListaProductos({ pedido }) {
+  return (
+    <div className="space-y-3">
+      {pedido.map((item, i) => (
+        <div key={`${item.id}-${i}`} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="font-bold text-slate-800">{item.nombre}</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Cantidad: <span className="font-bold text-slate-700">{item.cantidad}</span> · S/ {item.precio.toFixed(2)} c/u
+              </p>
+            </div>
+            <span className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm font-extrabold text-slate-800 shadow-sm">
+              S/ {(item.precio * item.cantidad).toFixed(2)}
+            </span>
+          </div>
+          <Personalizacion item={item} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function Cobro({ pedido, total, onPedidoExitoso }) {
-  const [tipoPedido, setTipoPedido] = useState("Llevar");
+  const [tipoEntrega, setTipoEntrega] = useState("llevar");
   const [nombreCliente, setNombreCliente] = useState("");
-  const [metodoPago, setMetodoPago] = useState("Efectivo");
-  const [efectivoRecibido, setEfectivoRecibido] = useState(0);
-
-  // Controla la aparición del modal de confirmación
+  const [metodoPago, setMetodoPago] = useState("efectivo");
+  const [efectivoRecibido, setEfectivoRecibido] = useState("");
   const [mostrarModal, setMostrarModal] = useState(false);
-  const [guardandoPedido, setGuardandoPedido] = useState(false);
+  const [guardando, setGuardando] = useState(false);
 
-  const vuelto =
-    metodoPago === "Efectivo"
-      ? efectivoRecibido - total
-      : 0;
+  const totalR = round2(total);
+  const recibido = Number(efectivoRecibido) || 0;
+  const esEfectivo = metodoPago === "efectivo";
+  const vuelto = esEfectivo ? Math.max(round2(recibido - totalR), 0) : 0;
+  const efectivoInsuficiente = esEfectivo && recibido < totalR; // RN-14
+  const puedeConfirmar = pedido.length > 0 && totalR > 0 && !efectivoInsuficiente;
 
   const confirmarPedido = async () => {
+    if (!puedeConfirmar) return;
+    let pedidoId = null;
+
     try {
-      setGuardandoPedido(true);
-      const correlativo = `PED-${Date.now().toString().slice(-4)}`;
+      setGuardando(true);
 
-      // 1. Guardar en la tabla pedidos
-      const { data: pedidoData, error: errPedido } = await supabase
+      // 1. Pedido (el número diario lo asigna la BD)
+      const { data: ped, error: e1 } = await supabase
         .from("pedidos")
-        .insert([
-          {
-            numero_pedido: correlativo,
-            cliente: nombreCliente.trim() || "Cliente General",
-            tipo_pedido: tipoPedido,
-            metodo_pago: metodoPago,
-            total: total,
-            efectivo_recibido: metodoPago === "Efectivo" ? efectivoRecibido : total,
-            vuelto: Math.max(vuelto, 0),
-            estado: "Pendiente",
-          },
-        ]);
+        .insert({
+          tipo_entrega: tipoEntrega,
+          cliente_nombre: nombreCliente.trim() || "Cliente General",
+          total: totalR,
+        })
+        .select("id, numero_dia")
+        .single();
+      if (e1) throw e1;
+      pedidoId = ped.id;
 
-      if (errPedido) throw errPedido;
+      // 2. Detalles
+      const filas = pedido.map((item) => ({
+        pedido_id: pedidoId,
+        producto_id: item.id,
+        producto_nombre: item.nombre,
+        categoria_nombre: item.categoria_nombre,
+        precio_base: Number(item.precio_venta),
+        precio_unitario: round2(item.precio),
+        cantidad: item.cantidad,
+        subtotal: round2(item.precio * item.cantidad),
+        personalizacion: item.personalizacion || null,
+        descripcion: textoPersonalizacion(item.personalizacion) || null,
+      }));
+      const { data: dets, error: e2 } = await supabase
+        .from("pedido_detalles")
+        .insert(filas)
+        .select("id");
+      if (e2) throw e2;
 
-      const pedidoId = pedidoData?.[0]?.id;
-
-      // 2. Guardar en la tabla detalle_pedidos
-      if (pedidoId && pedido.length > 0) {
-        const detalles = pedido.map((item) => ({
-          pedido_id: pedidoId,
-          producto_id: item.id || null,
-          nombre_producto: item.nombre,
-          precio_unitario: item.precio,
-          cantidad: item.cantidad,
-          subtotal: item.precio * item.cantidad,
-          personalizacion: item.personalizacion || {},
-        }));
-
-        await supabase.from("detalle_pedidos").insert(detalles);
+      // 3. Opciones (salsas, extras, retirables)
+      const opciones = pedido.flatMap((item, i) =>
+        (item.opciones || []).map((o) => ({ detalle_id: dets[i].id, ...o }))
+      );
+      if (opciones.length > 0) {
+        const { error: e3 } = await supabase.from("pedido_detalle_opciones").insert(opciones);
+        if (e3) throw e3;
       }
+
+      // 4. Cobro: crea la venta, pagos, vuelto y descuenta stock (una sola vez)
+      const pago = { metodo: metodoPago, monto: totalR };
+      if (esEfectivo) pago.monto_recibido = recibido;
+      const { error: e4 } = await supabase.rpc("registrar_venta", {
+        p_pedido_id: pedidoId,
+        p_pagos: [pago],
+      });
+      if (e4) throw e4;
 
       setMostrarModal(false);
       window.print();
-
-      if (onPedidoExitoso) {
-        onPedidoExitoso();
-      }
+      onPedidoExitoso?.(ped.numero_dia);
     } catch (err) {
-      console.error("Error al registrar pedido en Supabase:", err);
-      alert("Error al registrar el pedido: " + (err.message || err));
-      window.print();
+      console.error("Error al registrar pedido:", err);
+      // Si falló el cobro, se elimina el pedido huérfano
+      if (pedidoId) await supabase.from("pedidos").delete().eq("id", pedidoId);
+      const msg = String(err.message || err);
+      alert(
+        msg.includes("stock_actual")
+          ? "Stock insuficiente para uno de los productos."
+          : "Error al registrar el pedido: " + msg
+      );
     } finally {
-      setGuardandoPedido(false);
+      setGuardando(false);
     }
   };
 
   return (
-    /*
-      ============================================================
-      CONTENEDOR PRINCIPAL DEL COBRO
-      ============================================================
-
-      Este contenedor tiene una altura limitada a la ventana
-      y permite hacer scroll vertical SOLO dentro del cobro.
-    */
     <div className="h-[calc(100vh-2rem)] overflow-y-auto bg-slate-100 px-4 py-6">
-
-      {/* =========================================================
-          CONTENEDOR PRINCIPAL
-      ========================================================== */}
-
       <div className="mx-auto w-full max-w-4xl">
-
-        {/* =========================================================
-            CABECERA
-        ========================================================== */}
-
-        <div className="mb-5 rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">
-                FastOrder
-              </p>
-
-              <h1 className="text-2xl font-extrabold text-slate-800">
-                Generando Pedido #001
-              </h1>
-
-              <p className="mt-1 text-sm text-slate-500">
-                Completa los datos del pedido antes de realizar el cobro.
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-blue-50 px-4 py-3 text-center">
-              <p className="text-xs font-semibold text-blue-600">
-                TOTAL
-              </p>
-
-              <p className="text-2xl font-extrabold text-blue-700">
-                S/ {total.toFixed(2)}
-              </p>
-            </div>
-
+        {/* CABECERA */}
+        <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">FastOrder</p>
+            <h1 className="text-2xl font-extrabold text-slate-800">Generando pedido</h1>
+            <p className="mt-1 text-sm text-slate-500">Completa los datos antes de realizar el cobro.</p>
           </div>
-
+          <div className="rounded-xl bg-blue-50 px-4 py-3 text-center">
+            <p className="text-xs font-semibold text-blue-600">TOTAL</p>
+            <p className="text-2xl font-extrabold text-blue-700">S/ {totalR.toFixed(2)}</p>
+          </div>
         </div>
 
-        {/* =========================================================
-            TARJETA PRINCIPAL
-        ========================================================== */}
-
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
-
           <div className="space-y-7 p-6">
-
-            {/* =====================================================
-                TIPO DE PEDIDO
-            ====================================================== */}
-
+            {/* TIPO */}
             <div>
-
-              <div className="mb-3">
-                <h2 className="text-lg font-bold text-slate-800">
-                  Tipo de pedido
-                </h2>
-
-                <p className="text-sm text-slate-500">
-                  Selecciona cómo se entregará el pedido.
-                </p>
+              <h2 className="text-lg font-bold text-slate-800">Tipo de pedido</h2>
+              <p className="mb-3 text-sm text-slate-500">Selecciona cómo se atenderá el pedido.</p>
+              <div className="grid grid-cols-2 gap-3">
+                {ENTREGAS.map(([valor, texto]) => (
+                  <button key={valor} type="button" onClick={() => setTipoEntrega(valor)} className={btn(tipoEntrega === valor)}>
+                    {texto}
+                  </button>
+                ))}
               </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-
-                {/* SALÓN */}
-
-                <button
-                  type="button"
-                  onClick={() => setTipoPedido("Salón")}
-                  className={`rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
-                    tipoPedido === "Salón"
-                      ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
-                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                  }`}
-                >
-                  Salón
-                </button>
-
-                {/* LLEVAR */}
-
-                <button
-                  type="button"
-                  onClick={() => setTipoPedido("Llevar")}
-                  className={`rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
-                    tipoPedido === "Llevar"
-                      ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
-                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                  }`}
-                >
-                  Llevar
-                </button>
-
-                {/* RECOGER */}
-
-                <button
-                  type="button"
-                  onClick={() => setTipoPedido("Recoger")}
-                  className={`rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
-                    tipoPedido === "Recoger"
-                      ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
-                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                  }`}
-                >
-                  Recoger
-                </button>
-
-                {/* DELIVERY */}
-
-                <button
-                  type="button"
-                  onClick={() => setTipoPedido("Delivery")}
-                  className={`rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
-                    tipoPedido === "Delivery"
-                      ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
-                      : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                  }`}
-                >
-                  Delivery
-                </button>
-
-              </div>
-
             </div>
 
-            {/* =====================================================
-                CLIENTE
-            ====================================================== */}
-
+            {/* CLIENTE */}
             <div>
-
-              <div className="mb-3">
-                <h2 className="text-lg font-bold text-slate-800">
-                  Datos del cliente
-                </h2>
-
-                <p className="text-sm text-slate-500">
-                  Ingresa el nombre para identificar el pedido.
-                </p>
-              </div>
-
+              <h2 className="text-lg font-bold text-slate-800">Datos del cliente</h2>
+              <p className="mb-3 text-sm text-slate-500">Nombre o alias para identificar el pedido.</p>
               <input
                 type="text"
                 value={nombreCliente}
-                onChange={(e) =>
-                  setNombreCliente(e.target.value)
-                }
-                className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                onChange={(e) => setNombreCliente(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-3 text-slate-800 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
                 placeholder="Escribe el nombre del cliente..."
               />
-
             </div>
 
-            {/* =====================================================
-                MÉTODO DE PAGO
-            ====================================================== */}
-
+            {/* MÉTODO DE PAGO */}
             <div>
-
-              <div className="mb-3">
-                <h2 className="text-lg font-bold text-slate-800">
-                  Método de pago
-                </h2>
-
-                <p className="text-sm text-slate-500">
-                  Selecciona cómo realizará el pago.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-
-                {[
-                  "Efectivo",
-                  "Yape",
-                  "Plin",
-                  "Tarjeta",
-                ].map((metodo) => (
-
-                  <button
-                    key={metodo}
-                    type="button"
-                    onClick={() =>
-                      setMetodoPago(metodo)
-                    }
-                    className={`rounded-xl border px-4 py-3 font-bold transition-all duration-200 ${
-                      metodoPago === metodo
-                        ? "border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-blue-300 hover:bg-blue-50"
-                    }`}
-                  >
-                    {metodo}
+              <h2 className="text-lg font-bold text-slate-800">Método de pago</h2>
+              <p className="mb-3 text-sm text-slate-500">Selecciona cómo realizará el pago.</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                {METODOS.map(([valor, texto]) => (
+                  <button key={valor} type="button" onClick={() => setMetodoPago(valor)} className={btn(metodoPago === valor)}>
+                    {texto}
                   </button>
-
                 ))}
-
               </div>
-
             </div>
 
-            {/* =====================================================
-                DETALLE DEL PEDIDO
-            ====================================================== */}
-
+            {/* DETALLE */}
             <div>
-
               <div className="mb-4 flex items-center justify-between">
-
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">
-                    Detalle del pedido
-                  </h2>
-
-                  <p className="text-sm text-slate-500">
-                    Productos y personalizaciones seleccionadas.
-                  </p>
+                  <h2 className="text-lg font-bold text-slate-800">Detalle del pedido</h2>
+                  <p className="text-sm text-slate-500">Productos y personalizaciones.</p>
                 </div>
-
-                <div className="rounded-lg bg-slate-100 px-3 py-2">
-                  <span className="text-sm font-bold text-slate-600">
-                    {pedido.length} producto
-                    {pedido.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-
+                <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-bold text-slate-600">
+                  {pedido.length} producto{pedido.length !== 1 ? "s" : ""}
+                </span>
               </div>
-
-              <div className="space-y-3">
-
-                {pedido.map((item, i) => (
-
-                  <div
-                    key={`${item.id}-${i}`}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition hover:border-slate-300"
-                  >
-
-                    {/* NOMBRE / PRECIO */}
-
-                    <div className="flex items-start justify-between gap-4">
-
-                      <div className="min-w-0">
-
-                        <h3 className="font-bold text-slate-800">
-                          {item.nombre}
-                        </h3>
-
-                        <p className="mt-1 text-sm text-slate-500">
-                          Cantidad:{" "}
-                          <span className="font-bold text-slate-700">
-                            {item.cantidad}
-                          </span>
-                        </p>
-
-                      </div>
-
-                      <span className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm font-extrabold text-slate-800 shadow-sm">
-                        S/{" "}
-                        {(
-                          item.precio *
-                          item.cantidad
-                        ).toFixed(2)}
-                      </span>
-
-                    </div>
-
-                    {/* =================================================
-                        PERSONALIZACIÓN
-                    ================================================== */}
-
-                    {item.personalizacion && (
-
-                      <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
-
-                        <p className="mb-3 text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                          Personalización
-                        </p>
-
-                        <div className="grid gap-2 sm:grid-cols-2">
-
-                          {/* PAPAS */}
-
-                          {item.personalizacion.papas && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Papas
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.papas}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* CARNE */}
-
-                          {item.personalizacion.carne && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Carne
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.carne}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* ENSALADA */}
-
-                          {item.personalizacion.ensalada && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Ensalada
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.ensalada}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* MODALIDAD */}
-
-                          {item.personalizacion.modalidad && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Modalidad
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.modalidad}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* CREMAS */}
-
-                          {item.personalizacion.cremas &&
-                            item.personalizacion.modalidad !==
-                              "Salón" && (
-
-                              <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                <p className="text-xs font-semibold text-slate-400">
-                                  Cremas
-                                </p>
-
-                                <p className="text-sm font-bold text-slate-700">
-                                  {item.personalizacion.cremas.length > 0
-                                    ? item.personalizacion.cremas.join(", ")
-                                    : "Ninguna"}
-                                </p>
-
-                              </div>
-
-                          )}
-
-                          {/* CREMAS SALCHIPAPA */}
-
-                          {item.personalizacion.cremas &&
-                            !item.personalizacion.modalidad && (
-
-                              <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                <p className="text-xs font-semibold text-slate-400">
-                                  Cremas
-                                </p>
-
-                                <p className="text-sm font-bold text-slate-700">
-                                  {item.personalizacion.cremas.length > 0
-                                    ? item.personalizacion.cremas.join(", ")
-                                    : "Ninguna"}
-                                </p>
-
-                              </div>
-
-                          )}
-
-                          {/* TEMPERATURA */}
-
-                          {item.personalizacion.temperatura && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Temperatura
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.temperatura}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* PORCIÓN */}
-
-                          {item.personalizacion.porcion && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Porción
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.porcion} alitas
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* SALSAS */}
-
-                          {item.personalizacion.salsas && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Salsas adicionales
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.salsas.length > 0
-                                  ? item.personalizacion.salsas.join(", ")
-                                  : "Ninguna"}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* OBSERVACIÓN */}
-
-                          {item.personalizacion.observacion && (
-                            <div className="rounded-lg bg-amber-50 px-3 py-2 sm:col-span-2">
-
-                              <p className="text-xs font-semibold text-amber-600">
-                                Observación
-                              </p>
-
-                              <p className="break-words text-sm font-medium text-slate-700">
-                                {item.personalizacion.observacion}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* INGREDIENTES */}
-
-                          {item.personalizacion.ingredientes && (
-                            <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Ingredientes
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.ingredientes.join(", ")}
-                              </p>
-
-                            </div>
-                          )}
-
-                          {/* ADICIONALES */}
-
-                          {item.personalizacion.adicionales?.length > 0 && (
-
-                            <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                              <p className="text-xs font-semibold text-slate-400">
-                                Adicionales
-                              </p>
-
-                              <p className="text-sm font-bold text-slate-700">
-                                {item.personalizacion.adicionales.join(", ")}
-                              </p>
-
-                            </div>
-
-                          )}
-
-                        </div>
-
-                      </div>
-
-                    )}
-
-                    {/* PRECIO UNITARIO */}
-
-                    <div className="mt-3 border-t border-slate-200 pt-3">
-
-                      <p className="text-xs font-semibold text-blue-600">
-                        S/ {item.precio.toFixed(2)} c/u
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                ))}
-
-              </div>
-
-              {/* TOTAL */}
-
+              <ListaProductos pedido={pedido} />
               <div className="mt-5 flex items-center justify-between rounded-2xl bg-slate-900 px-5 py-4 text-white">
-
-                <span className="text-lg font-bold">
-                  Total a pagar
-                </span>
-
-                <span className="text-2xl font-extrabold">
-                  S/ {total.toFixed(2)}
-                </span>
-
+                <span className="text-lg font-bold">Total a pagar</span>
+                <span className="text-2xl font-extrabold">S/ {totalR.toFixed(2)}</span>
               </div>
-
             </div>
 
-            {/* =====================================================
-                EFECTIVO
-            ====================================================== */}
-
-            {metodoPago === "Efectivo" && (
-
+            {/* EFECTIVO */}
+            {esEfectivo && (
               <div className="rounded-2xl border border-green-200 bg-green-50 p-5">
-
-                <div className="mb-3">
-
-                  <h2 className="text-lg font-bold text-slate-800">
-                    Pago en efectivo
-                  </h2>
-
-                  <p className="text-sm text-slate-500">
-                    Ingresa el monto recibido del cliente.
-                  </p>
-
-                </div>
-
+                <h2 className="text-lg font-bold text-slate-800">Pago en efectivo</h2>
+                <p className="mb-3 text-sm text-slate-500">Ingresa el monto recibido del cliente.</p>
                 <input
                   type="number"
                   min="0"
+                  step="0.1"
                   value={efectivoRecibido}
-                  onChange={(e) =>
-                    setEfectivoRecibido(
-                      Number(e.target.value)
-                    )
-                  }
+                  onChange={(e) => setEfectivoRecibido(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-lg font-bold text-slate-800 outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100"
                   placeholder="Ej: 50.00"
                 />
-
+                {efectivoInsuficiente && efectivoRecibido !== "" && (
+                  <p className="mt-2 text-sm font-semibold text-red-600">
+                    El monto recibido es menor al total.
+                  </p>
+                )}
                 <div className="mt-4 flex items-center justify-between rounded-xl bg-white px-4 py-3">
-
-                  <span className="font-bold text-slate-600">
-                    Vuelto
-                  </span>
-
-                  <span className="text-xl font-extrabold text-green-600">
-                    S/{" "}
-                    {Math.max(vuelto, 0).toFixed(2)}
-                  </span>
-
+                  <span className="font-bold text-slate-600">Vuelto</span>
+                  <span className="text-3xl font-extrabold text-green-600">S/ {vuelto.toFixed(2)}</span>
                 </div>
-
               </div>
-
             )}
-
           </div>
 
-          {/* =====================================================
-              BOTÓN REVISAR
-          ====================================================== */}
-
           <div className="border-t border-slate-200 bg-slate-50 p-6">
-
             <button
               type="button"
-              disabled={pedido.length === 0}
+              disabled={!puedeConfirmar}
               onClick={() => setMostrarModal(true)}
-              className="w-full rounded-xl bg-blue-600 px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-blue-200 transition-all duration-200 hover:bg-blue-700 hover:shadow-xl disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
+              className="w-full rounded-xl bg-blue-600 px-6 py-4 text-lg font-extrabold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none"
             >
               Revisar y confirmar pedido
             </button>
-
           </div>
-
         </div>
-
       </div>
 
-      {/* =========================================================
-          MODAL DE CONFIRMACIÓN
-      ========================================================== */}
-
+      {/* MODAL DE CONFIRMACIÓN */}
       {mostrarModal && (
-
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-
-          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-
-            {/* =====================================================
-                CABECERA DEL MODAL
-            ====================================================== */}
-
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
-
+          <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
               <div>
-
-                <p className="text-xs font-extrabold uppercase tracking-widest text-blue-600">
-                  FastOrder
-                </p>
-
-                <h2 className="text-xl font-extrabold text-slate-800">
-                  Resumen del Pedido
-                </h2>
-
-                <p className="text-sm text-slate-500">
-                  Verifica la información antes de imprimir.
-                </p>
-
+                <p className="text-xs font-extrabold uppercase tracking-widest text-blue-600">FastOrder</p>
+                <h2 className="text-xl font-extrabold text-slate-800">Resumen del Pedido</h2>
               </div>
-
               <button
                 type="button"
                 onClick={() => setMostrarModal(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500 transition hover:bg-slate-200 hover:text-slate-800"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500 hover:bg-slate-200"
               >
                 ×
               </button>
-
             </div>
 
-            {/* =====================================================
-                CONTENIDO DEL RESUMEN
-            ====================================================== */}
-
-            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-100">
-
-              <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
-
-                {/* COLUMNA IZQUIERDA */}
-
-                <div className="hidden border-r border-slate-200 bg-white p-4 lg:block">
-
-                  <div className="space-y-4">
-
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-100 p-4">
+              <div className="grid grid-cols-2 gap-3 rounded-xl bg-white p-4 text-sm sm:grid-cols-4">
+                {[
+                  ["Cliente", nombreCliente || "Cliente General"],
+                  ["Tipo", ENTREGAS.find((e) => e[0] === tipoEntrega)[1]],
+                  ["Pago", METODOS.find((m) => m[0] === metodoPago)[1]],
+                  ["Total", `S/ ${totalR.toFixed(2)}`],
+                ].map(([k, v]) => (
+                  <div key={k}>
+                    <p className="text-xs font-bold uppercase text-slate-400">{k}</p>
+                    <p className="font-bold text-slate-800">{v}</p>
+                  </div>
+                ))}
+                {esEfectivo && (
+                  <>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Cliente
-                      </p>
-
-                      <p className="mt-1 font-bold text-slate-800">
-                        {nombreCliente || "Sin nombre"}
-                      </p>
+                      <p className="text-xs font-bold uppercase text-slate-400">Recibido</p>
+                      <p className="font-bold text-slate-800">S/ {recibido.toFixed(2)}</p>
                     </div>
-
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Tipo de pedido
-                      </p>
-
-                      <p className="mt-1 font-bold text-slate-800">
-                        {tipoPedido}
-                      </p>
+                    <div className="rounded-lg bg-green-50 px-2 py-1">
+                      <p className="text-xs font-bold uppercase text-green-600">Vuelto</p>
+                      <p className="text-lg font-extrabold text-green-700">S/ {vuelto.toFixed(2)}</p>
                     </div>
-
-                    <div>
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Método de pago
-                      </p>
-
-                      <p className="mt-1 font-bold text-slate-800">
-                        {metodoPago}
-                      </p>
-                    </div>
-
-                    {metodoPago === "Efectivo" && (
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                          Efectivo recibido
-                        </p>
-
-                        <p className="mt-1 font-bold text-slate-800">
-                          S/ {efectivoRecibido.toFixed(2)}
-                        </p>
-                      </div>
-                    )}
-
-                    {metodoPago === "Efectivo" && (
-                      <div className="rounded-xl bg-green-50 p-3">
-
-                        <p className="text-xs font-bold uppercase tracking-wider text-green-600">
-                          Vuelto
-                        </p>
-
-                        <p className="mt-1 text-xl font-extrabold text-green-700">
-                          S/ {Math.max(vuelto, 0).toFixed(2)}
-                        </p>
-
-                      </div>
-                    )}
-
-                    <div className="rounded-xl bg-blue-50 p-4">
-
-                      <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
-                        Total
-                      </p>
-
-                      <p className="mt-1 text-2xl font-extrabold text-blue-700">
-                        S/ {total.toFixed(2)}
-                      </p>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* =================================================
-                    PRODUCTOS
-                ================================================== */}
-
-                <div className="p-4">
-
-                  <div className="mb-4">
-
-                    <h3 className="text-lg font-extrabold text-slate-800">
-                      Productos
-                    </h3>
-
-                    <p className="text-sm text-slate-500">
-                      {pedido.length} producto
-                      {pedido.length !== 1 ? "s" : ""} en el pedido.
-                    </p>
-
-                  </div>
-
-                  <div className="space-y-3">
-
-                    {pedido.map((item, i) => (
-
-                      <div
-                        key={`${item.id}-${i}`}
-                        className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                      >
-
-                        <div className="flex items-start justify-between gap-4">
-
-                          <div>
-
-                            <h4 className="font-extrabold text-slate-800">
-                              {item.nombre}
-                            </h4>
-
-                            <p className="mt-1 text-sm text-slate-500">
-                              Cantidad:{" "}
-                              <span className="font-bold text-slate-700">
-                                {item.cantidad}
-                              </span>
-                            </p>
-
-                          </div>
-
-                          <p className="whitespace-nowrap font-extrabold text-slate-800">
-                            S/{" "}
-                            {(
-                              item.precio *
-                              item.cantidad
-                            ).toFixed(2)}
-                          </p>
-
-                        </div>
-
-                        {item.personalizacion && (
-
-                          <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-
-                            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                              Personalización
-                            </p>
-
-                            <div className="grid gap-2 sm:grid-cols-2">
-
-                              {item.personalizacion.papas && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Papas
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.papas}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.carne && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Carne
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.carne}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.ensalada && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Ensalada
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.ensalada}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.modalidad && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Modalidad
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.modalidad}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.cremas && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Cremas
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.cremas.length > 0
-                                      ? item.personalizacion.cremas.join(", ")
-                                      : "Ninguna"}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.temperatura && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Temperatura
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.temperatura}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.porcion && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Porción
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.porcion} alitas
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.salsas && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Salsas adicionales
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.salsas.length > 0
-                                      ? item.personalizacion.salsas.join(", ")
-                                      : "Ninguna"}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.observacion && (
-                                <div className="rounded-lg bg-amber-50 px-3 py-2 sm:col-span-2">
-
-                                  <p className="text-xs font-semibold text-amber-600">
-                                    Observación
-                                  </p>
-
-                                  <p className="break-words text-sm font-medium text-slate-700">
-                                    {item.personalizacion.observacion}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.ingredientes && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Ingredientes
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.ingredientes.join(", ")}
-                                  </p>
-
-                                </div>
-                              )}
-
-                              {item.personalizacion.adicionales?.length > 0 && (
-                                <div className="rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
-
-                                  <p className="text-xs text-slate-400">
-                                    Adicionales
-                                  </p>
-
-                                  <p className="text-sm font-bold text-slate-700">
-                                    {item.personalizacion.adicionales.join(", ")}
-                                  </p>
-
-                                </div>
-                              )}
-
-                            </div>
-
-                          </div>
-
-                        )}
-
-                      </div>
-
-                    ))}
-
-                  </div>
-
-                  {/* TOTAL */}
-
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-900 px-4 py-4 text-white">
-
-                    <span className="font-bold">
-                      Total a pagar
-                    </span>
-
-                    <span className="text-xl font-extrabold">
-                      S/ {total.toFixed(2)}
-                    </span>
-
-                  </div>
-
-                </div>
-
+                  </>
+                )}
               </div>
-
+              <ListaProductos pedido={pedido} />
             </div>
 
-            {/* =====================================================
-                BOTONES
-            ====================================================== */}
-
-            <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-white p-4">
-
+            <div className="flex justify-end gap-3 border-t border-slate-200 bg-white p-4">
               <button
                 type="button"
                 onClick={() => setMostrarModal(false)}
-                className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 transition hover:bg-slate-100"
+                className="rounded-xl border border-slate-300 px-6 py-3 font-bold text-slate-700 hover:bg-slate-100"
               >
                 Cancelar
               </button>
-
               <button
                 type="button"
-                disabled={guardandoPedido}
+                disabled={guardando}
                 onClick={confirmarPedido}
-                className="flex items-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md shadow-blue-200 transition hover:bg-blue-700 hover:shadow-lg disabled:opacity-50"
+                className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md shadow-blue-200 hover:bg-blue-700 disabled:opacity-50"
               >
-                {guardandoPedido ? (
-                  <>
-                    <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
-                    <span>Guardando Pedido...</span>
-                  </>
-                ) : (
-                  <span>Confirmar e Imprimir</span>
-                )}
+                {guardando ? "Guardando pedido..." : "Confirmar e Imprimir"}
               </button>
-
             </div>
-
           </div>
-
         </div>
-
       )}
-
     </div>
   );
 }
