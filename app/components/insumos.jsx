@@ -9,6 +9,9 @@ export default function Insumos() {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
+  const [insumoEditando, setInsumoEditando] = useState(null);
+  const [desactivandoId, setDesactivandoId] = useState(null);
+
   const [formulario, setFormulario] = useState({
     nombre: "",
     unidad: "unidad",
@@ -55,22 +58,25 @@ export default function Insumos() {
   // ==============================
 
   const abrirModal = () => {
-    setFormulario({
-      nombre: "",
-      unidad: "unidad",
-      stockActual: "",
-      stockMinimo: "",
-      tieneVencimiento: true,
-    });
+  setInsumoEditando(null);
 
-    setModalAbierto(true);
-  };
+  setFormulario({
+    nombre: "",
+    unidad: "unidad",
+    stockActual: "",
+    stockMinimo: "",
+    tieneVencimiento: true,
+  });
+
+  setModalAbierto(true);
+};
 
   const cerrarModal = () => {
-    if (guardando) return;
+  if (guardando) return;
 
-    setModalAbierto(false);
-  };
+  setModalAbierto(false);
+  setInsumoEditando(null);
+};
 
   // ==============================
   // FORMULARIO
@@ -83,123 +89,83 @@ export default function Insumos() {
     }));
   };
 
-  // ==============================
-  // GUARDAR INSUMO
-  // ==============================
+  
+const guardarInsumo = async (e) => {
+  e.preventDefault();
 
-  const guardarInsumo = async (e) => {
-    e.preventDefault();
+  const nombre = formulario.nombre.trim();
+  const stockActual = Number(formulario.stockActual);
+  const stockMinimo = Number(formulario.stockMinimo);
 
-    const nombre = formulario.nombre.trim();
-    const stockActual = Number(formulario.stockActual);
-    const stockMinimo = Number(formulario.stockMinimo);
+  // ------------------------------
+  // VALIDACIONES
+  // ------------------------------
+
+  if (!nombre) {
+    alert("Ingresa el nombre del insumo.");
+    return;
+  }
+
+  if (
+    formulario.stockActual === "" ||
+    Number.isNaN(stockActual) ||
+    stockActual < 0
+  ) {
+    alert("Ingresa un stock actual válido.");
+    return;
+  }
+
+  if (
+    formulario.stockMinimo === "" ||
+    Number.isNaN(stockMinimo) ||
+    stockMinimo < 0
+  ) {
+    alert("Ingresa un stock mínimo válido.");
+    return;
+  }
+
+  if (stockMinimo > stockActual) {
+    const continuar = window.confirm(
+      "El stock mínimo es mayor que el stock actual.\n\n" +
+        "El insumo quedará registrado como stock bajo.\n\n" +
+        "¿Deseas continuar?"
+    );
+
+    if (!continuar) return;
+  }
+
+  try {
+    setGuardando(true);
 
     // ------------------------------
-    // VALIDACIONES
+    // 1. EDITAR INSUMO EXISTENTE
     // ------------------------------
 
-    if (!nombre) {
-      alert("Ingresa el nombre del insumo.");
-      return;
-    }
+    if (insumoEditando) {
+      const { data: actualizado, error } = await supabase
+        .from("insumos")
+        .update({
+          nombre,
+          unidad_medida: formulario.unidad,
+          stock_minimo: stockMinimo,
+          perecible: formulario.tieneVencimiento,
+        })
+        .eq("id", insumoEditando.id)
+        .select("*")
+        .single();
 
-    if (
-      formulario.stockActual === "" ||
-      Number.isNaN(stockActual) ||
-      stockActual < 0
-    ) {
-      alert("Ingresa un stock actual válido.");
-      return;
-    }
+      if (error) throw error;
 
-    if (
-      formulario.stockMinimo === "" ||
-      Number.isNaN(stockMinimo) ||
-      stockMinimo < 0
-    ) {
-      alert("Ingresa un stock mínimo válido.");
-      return;
-    }
-
-    if (stockMinimo > stockActual) {
-      const continuar = window.confirm(
-        "El stock mínimo es mayor que el stock actual.\n\n" +
-          "El insumo quedará registrado como stock bajo.\n\n" +
-          "¿Deseas continuar?"
-      );
-
-      if (!continuar) return;
-    }
-
-    try {
-      setGuardando(true);
-
-      // ------------------------------
-      // 1. CREAR INSUMO
-      // ------------------------------
-
-      const { data: nuevoInsumo, error: errorInsumo } =
-        await supabase
-          .from("insumos")
-          .insert({
-            nombre,
-            unidad_medida: formulario.unidad,
-            stock_actual: stockActual,
-            stock_minimo: stockMinimo,
-            perecible: formulario.tieneVencimiento,
-            activo: true,
-          })
-          .select("*")
-          .single();
-
-      if (errorInsumo) throw errorInsumo;
-
-      // ------------------------------
-      // 2. REGISTRAR STOCK INICIAL
-      // ------------------------------
-
-      if (stockActual > 0) {
-        const { error: errorMovimiento } = await supabase.from("movimientos_inventario").insert({
-        insumo_id: nuevoInsumo.id,
-        tipo: "ingreso_manual",
-        cantidad: stockActual,
-        stock_antes: 0,
-        stock_despues: stockActual,
-        justificacion: "Stock inicial",
-      });
-
-        if (errorMovimiento) {
-          console.error(
-            "Error al registrar movimiento:",
-            errorMovimiento
-          );
-
-          /*
-           * El insumo ya fue creado correctamente.
-           * Mostramos el error para que no pase desapercibido.
-           */
-          alert(
-            "El insumo fue creado, pero no se pudo registrar " +
-              "el movimiento de stock inicial: " +
-              (errorMovimiento?.message || errorMovimiento)
-          );
-        }
-      }
-
-      // ------------------------------
-      // 3. ACTUALIZAR TABLA
-      // ------------------------------
-
+      // Actualizar el insumo en la tabla sin modificar su stock.
       setInsumos((prev) =>
-        [...prev, nuevoInsumo].sort((a, b) =>
-          a.nombre.localeCompare(b.nombre)
-        )
+        prev
+          .map((item) =>
+            item.id === actualizado.id ? actualizado : item
+          )
+          .sort((a, b) => a.nombre.localeCompare(b.nombre))
       );
 
-      // ------------------------------
-      // 4. LIMPIAR FORMULARIO
-      // ------------------------------
-
+      // Limpiar el formulario y cerrar el modal.
       setFormulario({
         nombre: "",
         unidad: "unidad",
@@ -209,17 +175,156 @@ export default function Insumos() {
       });
 
       setModalAbierto(false);
+      setInsumoEditando(null);
 
-      alert("Insumo registrado correctamente.");
+      alert("Insumo actualizado correctamente.");
+
+      return;
+    }
+
+    // ------------------------------
+    // 2. CREAR INSUMO NUEVO
+    // ------------------------------
+
+    const { data: nuevoInsumo, error: errorInsumo } =
+      await supabase
+        .from("insumos")
+        .insert({
+          nombre,
+          unidad_medida: formulario.unidad,
+          stock_actual: stockActual,
+          stock_minimo: stockMinimo,
+          perecible: formulario.tieneVencimiento,
+          activo: true,
+        })
+        .select("*")
+        .single();
+
+    if (errorInsumo) throw errorInsumo;
+
+    // ------------------------------
+    // 3. REGISTRAR STOCK INICIAL
+    // ------------------------------
+
+    if (stockActual > 0) {
+      const { error: errorMovimiento } = await supabase
+        .from("movimientos_inventario")
+        .insert({
+          insumo_id: nuevoInsumo.id,
+          tipo: "ingreso_manual",
+          cantidad: stockActual,
+          stock_antes: 0,
+          stock_despues: stockActual,
+          justificacion: "Stock inicial",
+        });
+
+      if (errorMovimiento) {
+        console.error(
+          "Error al registrar movimiento:",
+          errorMovimiento
+        );
+
+        alert(
+          "El insumo fue creado, pero no se pudo registrar " +
+            "el movimiento de stock inicial: " +
+            (errorMovimiento?.message || errorMovimiento)
+        );
+      }
+    }
+
+    // ------------------------------
+    // 4. ACTUALIZAR TABLA
+    // ------------------------------
+
+    setInsumos((prev) =>
+      [...prev, nuevoInsumo].sort((a, b) =>
+        a.nombre.localeCompare(b.nombre)
+      )
+    );
+
+    // ------------------------------
+    // 5. LIMPIAR FORMULARIO
+    // ------------------------------
+
+    setFormulario({
+      nombre: "",
+      unidad: "unidad",
+      stockActual: "",
+      stockMinimo: "",
+      tieneVencimiento: true,
+    });
+
+    setModalAbierto(false);
+
+    alert("Insumo registrado correctamente.");
+  } catch (error) {
+    console.error("Error al guardar insumo:", error);
+
+    alert(
+      "No se pudo guardar el insumo: " +
+        (error?.message || error)
+    );
+  } finally {
+    setGuardando(false);
+  }
+};
+
+  
+  // ==============================
+  // EDITAR INSUMO
+  // ==============================
+
+  const abrirEdicion = (insumo) => {
+    setInsumoEditando(insumo);
+
+    setFormulario({
+      nombre: insumo.nombre || "",
+      unidad: insumo.unidad_medida || "unidad",
+      stockActual: String(insumo.stock_actual ?? 0),
+      stockMinimo: String(insumo.stock_minimo ?? 0),
+      tieneVencimiento: Boolean(insumo.perecible),
+    });
+
+    setModalAbierto(true);
+  };
+
+  // ==============================
+  // DESACTIVAR INSUMO
+  // ==============================
+
+  const desactivarInsumo = async (insumo) => {
+    const confirmar = window.confirm(
+      `¿Deseas desactivar "${insumo.nombre}"?\n\n` +
+      "Dejará de aparecer entre los insumos activos, " +
+      "pero conservará su historial."
+    );
+
+    if (!confirmar) return;
+
+    try {
+      setDesactivandoId(insumo.id);
+
+      const { error } = await supabase
+        .from("insumos")
+        .update({ activo: false })
+        .eq("id", insumo.id);
+
+      if (error) throw error;
+
+      setInsumos((prev) =>
+        prev.filter((item) => item.id !== insumo.id)
+      );
+
+      alert("Insumo desactivado correctamente.");
     } catch (error) {
-      console.error("Error al guardar insumo:", error);
+      console.error("Error al desactivar insumo:", error);
 
       alert(
-        "No se pudo registrar el insumo: " +
-          (error?.message || error)
+        "No se pudo desactivar el insumo: " +
+        (error?.message || error)
       );
     } finally {
-      setGuardando(false);
+      setDesactivandoId(null);
     }
   };
 
@@ -320,6 +425,10 @@ export default function Insumos() {
                 <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Estado
                 </th>
+
+                <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Acciones
+                </th>
               </tr>
             </thead>
 
@@ -327,7 +436,7 @@ export default function Insumos() {
               {cargando ? (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-6 py-16 text-center text-sm text-slate-500"
                   >
                     Cargando insumos...
@@ -336,7 +445,7 @@ export default function Insumos() {
               ) : insumos.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-6 py-16 text-center"
                   >
                     <div className="flex flex-col items-center">
@@ -389,6 +498,30 @@ export default function Insumos() {
                           {estado.texto}
                         </span>
                       </td>
+
+                      
+  <td className="px-6 py-4">
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => abrirEdicion(insumo)}
+        className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+      >
+        Editar
+      </button>
+
+      <button
+        type="button"
+        onClick={() => desactivarInsumo(insumo)}
+        disabled={desactivandoId === insumo.id}
+        className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+      >
+        {desactivandoId === insumo.id
+          ? "Desactivando..."
+          : "Desactivar"}
+      </button>
+    </div>
+  </td> 
                     </tr>
                   );
                 })
@@ -407,15 +540,18 @@ export default function Insumos() {
           <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
             {/* HEADER */}
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Nuevo insumo
-                </h2>
+              
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">
+                {insumoEditando ? "Editar insumo" : "Nuevo insumo"}
+              </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
-                  Registra un nuevo insumo.
-                </p>
-              </div>
+              <p className="mt-1 text-sm text-slate-500">
+                {insumoEditando
+                  ? "Actualiza los datos del insumo."
+                  : "Registra un nuevo insumo."}
+              </p>
+            </div>
 
               <button
                 type="button"
@@ -487,14 +623,18 @@ export default function Insumos() {
                   onChange={(e) =>
                     cambiarCampo("stockActual", e.target.value)
                   }
+                  readOnly={Boolean(insumoEditando)}
                   placeholder="10"
                   required
                   disabled={guardando}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-black outline-none transition placeholder:text-slate-400 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 disabled:cursor-not-allowed disabled:opacity-60"
                 />
 
+                                
                 <p className="mt-1.5 text-xs text-slate-400">
-                  Cantidad disponible actualmente.
+                  {insumoEditando
+                    ? "El stock solo se modifica mediante movimientos de inventario."
+                    : "Cantidad inicial disponible actualmente."}
                 </p>
               </div>
 
@@ -579,7 +719,12 @@ export default function Insumos() {
                   disabled={guardando}
                   className="rounded-xl bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {guardando ? "Guardando..." : "Guardar insumo"}
+                  
+                {guardando
+                  ? "Guardando..."
+                  : insumoEditando
+                    ? "Guardar cambios"
+                    : "Guardar insumo"}
                 </button>
               </div>
             </form>
