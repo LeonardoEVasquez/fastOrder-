@@ -7,8 +7,10 @@
 //   .from(t).delete().eq(c, v)
 //   .rpc(fn, args)
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://bavdqhgxwwkvfdusmfzd.supabase.co";
+const SUPABASE_URL = (
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://bavdqhgxwwkvfdusmfzd.supabase.co"
+).replace(/\/+$/, "").replace(/\/rest\/v1$/, "");
 const SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJhdmRxaGd4d3drdmZkdXNtZnpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5Nzk2NzAsImV4cCI6MjEwNjU1NTY3MH0.EC1lHjrnVAG6zUpvhtowf7ghARu0YxIZAF71i_f0nvY";
