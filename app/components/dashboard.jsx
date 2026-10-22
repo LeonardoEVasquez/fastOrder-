@@ -624,9 +624,9 @@ export default function Dashboard({ productos = [] }) {
             </p>
           </div>
 
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-lg">
+          {/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-lg">
             ⚠️
-          </div>
+          </div> */}
         </div>
 
         {cargando ? (
@@ -689,7 +689,7 @@ export default function Dashboard({ productos = [] }) {
         ) : (
           <div className="rounded-xl bg-emerald-50 p-5 text-center">
             <p className="font-semibold text-emerald-700">
-              Todo está bien 👍
+              Todo está bien 
             </p>
 
             <p className="mt-1 text-sm text-emerald-600">
