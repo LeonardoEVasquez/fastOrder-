@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { supabase } from "@/lib/supabase/client";
 import { detalleItems, textoPersonalizacion, round2 } from "./Personalizacion";
 
@@ -72,12 +73,15 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
   const [mostrarModal, setMostrarModal] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  const [imprimirPendiente, setImprimirPendiente] = useState(false);
+
   const totalR = round2(total);
   const recibido = Number(efectivoRecibido) || 0;
   const esEfectivo = metodoPago === "efectivo";
   const vuelto = esEfectivo ? Math.max(round2(recibido - totalR), 0) : 0;
   const efectivoInsuficiente = esEfectivo && recibido < totalR; // RN-14
   const puedeConfirmar = pedido.length > 0 && totalR > 0 && !efectivoInsuficiente;
+
 
   const confirmarPedido = async () => {
     if (!puedeConfirmar) return;
@@ -136,9 +140,15 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
       });
       if (e4) throw e4;
 
-      window.print();
-      setMostrarModal(false);
-      onPedidoExitoso?.(ped.numero_dia);
+     // Cerrar el modal y actualizar el DOM antes de imprimir.
+flushSync(() => {
+  setMostrarModal(false);
+});
+
+// Imprimir antes de que el callback pueda limpiar el carrito.
+window.print();
+
+onPedidoExitoso?.(ped.numero_dia);
     } catch (err) {
       console.error("Error al registrar pedido:", err);
       // Si falló el cobro, se elimina el pedido huérfano
@@ -268,6 +278,36 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
           </div>
         </div>
       </div>
+
+      
+
+{/* COMANDA EXCLUSIVA PARA IMPRESIÓN */}
+{/* COMANDA EXCLUSIVA PARA IMPRESIÓN */}
+<div className="comanda-impresion">
+  <p className="comanda-cliente">
+    Pedido:
+  </p>
+
+  <p className="comanda-cliente">
+    Cliente: {nombreCliente.trim() || "Cliente General"}
+  </p>
+
+  {pedido.map((item, i) => (
+    <div key={`${item.id}-${i}`} className="comanda-producto">
+      <p className="comanda-nombre">
+        {item.cantidad} x {item.nombre}
+      </p>
+
+      {textoPersonalizacion(item.personalizacion) && (
+        <p className="comanda-detalle">
+          {textoPersonalizacion(item.personalizacion)}
+        </p>
+      )}
+    </div>
+  ))}
+</div>
+
+
 
       {/* MODAL DE CONFIRMACIÓN */}
       {mostrarModal && (

@@ -25,12 +25,20 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* Ticket térmico XP-80C */
+
+
+/* Comanda térmica XP-80C */
 @page {
   size: 80mm auto;
   margin: 0;
 }
 
+/* Ocultar la comanda en pantalla */
+.comanda-impresion {
+  display: none;
+}
+
+/* Estilos exclusivos de impresión */
 @media print {
   html,
   body {
@@ -46,30 +54,45 @@ body {
     print-color-adjust: exact;
   }
 
-  /* Ocultar toda la interfaz de la aplicación */
-  body * {
-    visibility: hidden !important;
-  }
 
-  /* Mostrar exclusivamente el ticket */
-  .ticket-impresion,
-  .ticket-impresion * {
+body * {
+  visibility: hidden !important;
+}
+
+/* Mostrar únicamente la comanda */
+body .comanda-impresion,
+body .comanda-impresion * {
+  visibility: visible !important;
+}
+
+body .comanda-impresion {
+  display: block !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+  /* Mostrar únicamente la comanda */
+  body .comanda-impresion,
+  body .comanda-impresion * {
+    display: revert !important;
     visibility: visible !important;
   }
 
-  .ticket-impresion {
-    position: fixed !important;
+  body .comanda-impresion {
+    display: block !important;
+  }
+
+  .comanda-impresion {
+    display: block !important;
+    position: absolute !important;
     top: 0 !important;
     left: 0 !important;
-    right: auto !important;
-    bottom: auto !important;
 
-    display: block !important;
     width: 72.1mm !important;
-    min-width: 0 !important;
     max-width: 72.1mm !important;
+    min-width: 0 !important;
     height: auto !important;
-    max-height: none !important;
 
     margin: 0 !important;
     padding: 2mm !important;
@@ -78,24 +101,40 @@ body {
 
     background: white !important;
     color: black !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
+    font-family: Arial, Helvetica, sans-serif !important;
   }
 
-  .ticket-impresion * {
+  .comanda-impresion * {
     box-sizing: border-box !important;
-    max-width: 100%;
-    overflow-wrap: anywhere;
+    max-width: 100% !important;
+    overflow-wrap: anywhere !important;
   }
 
-  /* No imprimir botones ni controles */
-  .ticket-impresion .print\:hidden {
-    display: none !important;
+  .comanda-cliente {
+    margin: 0 0 5px !important;
+    padding-bottom: 4px !important;
+    border-bottom: 1px dashed black !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
   }
 
-  .ticket-producto {
+  .comanda-producto {
+    margin: 0 !important;
+    padding: 3px 0 !important;
+    border-bottom: 1px dashed #999 !important;
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .comanda-nombre {
+    margin: 0 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+  }
+
+  .comanda-detalle {
+    margin: 2px 0 0 8px !important;
+    font-size: 9px !important;
+    line-height: 1.2 !important;
   }
 }
