@@ -20,6 +20,7 @@ export default function GestionProductos({
   const [productoReceta, setProductoReceta] = useState(null);
 
   const [vencimientos, setVencimientos] = useState({});
+  const categoriasConReceta = ["Hamburguesas", "Alitas", "Salchipapas"];
 
   const filtrados = productos.filter((p) => {
     if (categoriaSel !== "Todas") {
@@ -278,13 +279,15 @@ useEffect(() => {
                         ✏️ Editar
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setProductoReceta(p)}
-                        className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
-                      >
-                        📋 Receta
-                      </button>
+                      {categoriasConReceta.includes(cat?.nombre) && (
+                        <button
+                          type="button"
+                          onClick={() => setProductoReceta(p)}
+                          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-bold text-slate-700 transition hover:border-amber-400 hover:bg-amber-50 hover:text-amber-700"
+                        >
+                          📋 Receta
+                        </button>
+                      )}
 
                       <button
                         type="button"
