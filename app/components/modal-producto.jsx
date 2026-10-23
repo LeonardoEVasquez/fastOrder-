@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { supabaseStorage } from "@/lib/supabase/storage";
 
 const inputCls =
   "w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-red-500 focus:ring-2 focus:ring-red-100";
@@ -21,6 +22,8 @@ export default function ModalProducto({
   const [categoriaId, setCategoriaId] = useState("");
   const [precio, setPrecio] = useState("");
   const [imagen, setImagen] = useState("");
+  const [archivoImagen, setArchivoImagen] = useState(null);
+  const [vistaPrevia, setVistaPrevia] = useState("");
   const [activo, setActivo] = useState(true);
   const [permitePers, setPermitePers] = useState(true);
   const [controlaStock, setControlaStock] = useState(false);
@@ -52,7 +55,15 @@ export default function ModalProducto({
       setStockMinimo("0");
     }
     setError(null);
+    setArchivoImagen(null);
+    setVistaPrevia("");
   }, [modo, producto, categoriaActivaId, categorias, abierto]);
+
+  useEffect(() => {
+  if (!vistaPrevia.startsWith("blob:")) return;
+
+  return () => URL.revokeObjectURL(vistaPrevia);
+}, [vistaPrevia]);
 
   if (!abierto) return null;
 
@@ -86,11 +97,45 @@ export default function ModalProducto({
     setGuardando(true);
 
     try {
+
+      let imagenFinal = imagen.trim() || null;
+
+if (archivoImagen) {
+  const extensiones = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "image/gif": "gif",
+  };
+
+  const nombreArchivo =
+    `productos/${crypto.randomUUID()}.${extensiones[archivoImagen.type]}`;
+
+  const { error: errorSubida } = await supabaseStorage.storage
+    .from("product-images")
+    .upload(nombreArchivo, archivoImagen, {
+      contentType: archivoImagen.type,
+      upsert: false,
+    });
+
+  if (errorSubida) {
+    throw new Error(
+      `No se pudo subir la imagen: ${errorSubida.message}`
+    );
+  }
+
+  const { data: imagenPublica } = supabaseStorage.storage
+    .from("product-images")
+    .getPublicUrl(nombreArchivo);
+
+  imagenFinal = imagenPublica.publicUrl;
+}
+
       const payload = {
         nombre: nombre.trim(),
         categoria_id: parseInt(categoriaId, 10),
         precio_venta: precioNum,
-        imagen_url: imagen.trim() || null,
+        imagen_url: imagenFinal,
         activo,
         permite_personalizacion: permitePers,
         controla_stock: controlaStock,
@@ -209,31 +254,70 @@ export default function ModalProducto({
             </div>
           </div>
 
-          {/* URL IMAGEN */}
-          <div>
-            <label className={labelCls}>URL de Imagen (Web o /Image/...)</label>
-            <input
-              type="text"
-              value={imagen}
-              onChange={(e) => setImagen(e.target.value)}
-              placeholder="https://... o /Image/nombre.jpg"
-              className={inputCls}
-            />
-            {imagen && (
-              <div className="mt-2 flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                <img
-                  src={imagen}
-                  alt="Vista previa"
-                  className="h-12 w-12 rounded-lg object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src =
-                      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
-                  }}
-                />
-                <span className="text-xs text-slate-500">Vista previa de imagen</span>
-              </div>
-            )}
-          </div>
+          
+{/* IMAGEN DEL PRODUCTO */}
+<div>
+  <label className={labelCls}>Imagen del producto</label>
+
+  <input
+    type="file"
+    accept="image/jpeg,image/png,image/webp,image/gif"
+    onChange={(e) => {
+      const archivo = e.target.files?.[0];
+      if (!archivo) return;
+
+      const tiposPermitidos = [
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ];
+
+      if (!tiposPermitidos.includes(archivo.type)) {
+        setError("Selecciona una imagen JPG, PNG, WEBP o GIF.");
+        e.target.value = "";
+        return;
+      }
+
+      if (archivo.size > 5 * 1024 * 1024) {
+        setError("La imagen no puede superar los 5 MB.");
+        e.target.value = "";
+        return;
+      }
+
+      setError(null);
+      setArchivoImagen(archivo);
+      setVistaPrevia(URL.createObjectURL(archivo));
+    }}
+    className={inputCls}
+  />
+
+  <p className="mt-1 text-xs text-slate-500">
+    Selecciona una imagen de tu computadora. Máximo 5 MB.
+  </p>
+
+  {(vistaPrevia || imagen) && (
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <img
+        src={vistaPrevia || imagen}
+        alt="Vista previa del producto"
+        className="h-20 w-20 rounded-lg object-cover"
+      />
+
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-slate-700">
+          {archivoImagen ? archivoImagen.name : "Imagen actual"}
+        </p>
+        <p className="text-xs text-slate-500">
+          {archivoImagen
+            ? `${(archivoImagen.size / 1024 / 1024).toFixed(2)} MB`
+            : "Selecciona otra imagen para reemplazarla."}
+        </p>
+      </div>
+    </div>
+  )}
+</div>
+
 
           {/* CONTROL DE STOCK */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
