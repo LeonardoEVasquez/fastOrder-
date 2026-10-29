@@ -182,7 +182,7 @@ export default function Carta() {
             <div className="flex items-center gap-3 border-b border-slate-700 px-6 py-6">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500 text-xl font-black shadow-lg">F</div>
               <div>
-                <p>Carne y Fuego</p>
+                <p>Fuego Express</p>
               </div>
             </div>
 
