@@ -35,13 +35,11 @@ export default function OptimizacionCarta() {
     setRecomendacionesIA([]);
 
     try {
-      // 1. Consultar las ventas del periodo seleccionado.
       let consulta = supabase
         .from("ventas")
         .select("id, created_at")
         .order("created_at", { ascending: false });
 
-      // Interpretar las fechas en la zona horaria de Perú (UTC-5).
       if (desde) {
         consulta = consulta.gte(
           "created_at",
@@ -63,7 +61,6 @@ export default function OptimizacionCarta() {
 
       if (errorVentas) throw errorVentas;
 
-      // 2. Consultar catálogo, categorías, recetas e insumos.
       const [
         { data: catalogo, error: errorProductos },
         { data: categorias, error: errorCategorias },
@@ -96,7 +93,6 @@ export default function OptimizacionCarta() {
       const ventas = dataVentas || [];
       let detalles = [];
 
-      // 3. Obtener detalles y seleccionar los de las ventas del periodo.
       if (ventas.length > 0) {
         const { data: dataDetalles, error: errorDetalles } =
           await supabase
@@ -121,7 +117,6 @@ export default function OptimizacionCarta() {
         );
       }
 
-      // 4. Crear índices para las relaciones.
       const mapaCategorias = new Map(
         (categorias || []).map((categoria) => [
           String(categoria.id),
@@ -148,7 +143,6 @@ export default function OptimizacionCarta() {
         recetasPorProducto.get(idProducto).push(receta);
       }
 
-      // 5. Resumir las ventas por producto.
       const resumenVentas = new Map();
 
       for (const detalle of detalles) {
@@ -171,7 +165,6 @@ export default function OptimizacionCarta() {
         resumen.ventas += 1;
       }
 
-      // 6. Calcular la cantidad de productos por categoría.
       const cantidadPorCategoria = new Map();
 
       for (const producto of catalogo || []) {
@@ -194,8 +187,6 @@ export default function OptimizacionCarta() {
           : [0])
       );
 
-      // 7. Calcular indicadores objetivos.
-      // Las cifras se calculan aquí; Gemini solamente las interpreta.
       const resultado = (catalogo || [])
         .map((producto) => {
           const id = String(producto.id);
@@ -303,18 +294,15 @@ export default function OptimizacionCarta() {
 
       setProductos(resultado);
 
-      // No consultar a la IA si no existen productos activos.
       if (resultado.length === 0) {
         setRecomendacionesIA([]);
         return;
       }
 
-      // 8. Enviar los indicadores a la API de Gemini.
       setCargandoIA(true);
 
       const recomendacionesAcumuladas = [];
 
-      // Enviar lotes para admitir catálogos de más de 100 productos.
       for (let inicio = 0; inicio < resultado.length; inicio += 100) {
         const lote = resultado.slice(inicio, inicio + 100);
 
@@ -912,15 +900,6 @@ export default function OptimizacionCarta() {
           )}
         </section>
 
-        {/* <p className="text-sm leading-6 text-slate-500">
-          Importante: los costos y márgenes son estimaciones basadas en
-          las recetas registradas. No incluyen mano de obra, alquiler,
-          electricidad ni otros gastos operativos. La popularidad es
-          relativa a las unidades vendidas en el periodo seleccionado.
-          Gemini genera recomendaciones orientativas a partir de estos
-          datos; el sistema no cambia precios ni elimina productos
-          automáticamente. Valida las sugerencias antes de aplicarlas.
-        </p> */}
       </div>
     </div>
   );

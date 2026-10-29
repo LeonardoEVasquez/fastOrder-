@@ -1,5 +1,3 @@
-// Utilidades de fecha en zona horaria America/Lima (UTC-5, sin horario de verano)
-
 export const hoyLima = () =>
   new Date().toLocaleDateString("en-CA", {
     timeZone: "America/Lima",

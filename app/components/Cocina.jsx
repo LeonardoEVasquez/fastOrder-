@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { hoyLima, horaLima } from "./fechas";
 
-// [estado, título, color cabecera, siguiente estado, texto del botón]
 const COLUMNAS = [
   ["pendiente", "Pendientes", "bg-amber-500", "en_preparacion", "Iniciar preparación"],
   ["en_preparacion", "En preparación", "bg-blue-600", "listo", "Marcar como listo"],

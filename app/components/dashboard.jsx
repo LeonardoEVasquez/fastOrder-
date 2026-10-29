@@ -3,11 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-// ============================================================
-// FECHAS DE LA JORNADA DEL NEGOCIO
-// ============================================================
-
-// Obtiene la fecha actual según la zona horaria de Perú.
 function obtenerFechaHoyLima() {
   const partes = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Lima",
@@ -22,11 +17,8 @@ function obtenerFechaHoyLima() {
   return `${obtener("year")}-${obtener("month")}-${obtener("day")}`;
 }
 
-// Construye el intervalo de la jornada correspondiente
-// a la fecha seleccionada en el filtro.
 
 function obtenerJornadaNegocio(fechaSeleccionada) {
-  // Si no llega una fecha válida, usar la fecha actual de Perú.
   const fecha =
     /^\d{4}-\d{2}-\d{2}$/.test(fechaSeleccionada || "")
       ? fechaSeleccionada
@@ -45,15 +37,12 @@ function obtenerJornadaNegocio(fechaSeleccionada) {
       siguienteDia.getUTCDate()
     ).padStart(2, "0")}`;
 
-  // Inicio de la jornada: 6:00 p. m. de Perú.
   const inicio = `${fecha}T18:00:00-05:00`;
 
-  // Fin de la jornada: medianoche del día siguiente.
   const finCompleto = `${siguienteFecha}T00:00:00-05:00`;
 
   const hoy = obtenerFechaHoyLima();
 
-  // Para hoy, no consultar ventas posteriores al momento actual.
   const fin =
     fecha === hoy
       ? new Date().toISOString()
@@ -96,7 +85,6 @@ function formatearFecha(fecha) {
 export default function Dashboard({ productos = [] }) {
   const [cargando, setCargando] = useState(true);
 
-  // El filtro inicia automáticamente con la fecha de hoy en Perú.
   const [fechaSeleccionada, setFechaSeleccionada] = useState(
     () => obtenerFechaHoyLima()
   );
@@ -108,7 +96,6 @@ export default function Dashboard({ productos = [] }) {
   const [stockBajo, setStockBajo] = useState([]);
   const [error, setError] = useState("");
 
-  // Cada vez que se cambia la fecha, se actualizan los datos.
   useEffect(() => {
     cargarDashboard(fechaSeleccionada);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -120,10 +107,6 @@ export default function Dashboard({ productos = [] }) {
       setError("");
 
       const jornada = obtenerJornadaNegocio(fecha);
-
-      // ========================================================
-      // 1. VENTAS DE LA JORNADA SELECCIONADA
-      // ========================================================
 
       const { data: ventas, error: errorVentas } = await supabase
         .from("ventas")
@@ -144,10 +127,6 @@ export default function Dashboard({ productos = [] }) {
 
       setVentasHoy(totalVentas);
 
-      // ========================================================
-      // 2. PEDIDOS DE LA JORNADA SELECCIONADA
-      // ========================================================
-
       const { data: pedidos, error: errorPedidos } = await supabase
         .from("pedidos")
         .select("id")
@@ -156,10 +135,6 @@ export default function Dashboard({ productos = [] }) {
       if (errorPedidos) throw errorPedidos;
 
       setPedidosHoy(pedidos?.length || 0);
-
-      // ========================================================
-      // 3. VENTAS POR HORA
-      // ========================================================
 
       const horas = [
         { hora: 18, etiqueta: "6 PM", valor: 0 },
@@ -191,10 +166,6 @@ export default function Dashboard({ productos = [] }) {
       });
 
       setVentasPorHora(horas);
-
-      // ========================================================
-      // 4. PRODUCTOS MÁS VENDIDOS
-      // ========================================================
 
       const { data: detallesVentas, error: errorDetalles } =
         await supabase
@@ -239,11 +210,6 @@ export default function Dashboard({ productos = [] }) {
         }));
 
       setMasVendidos(rankingOrdenado);
-
-      // ========================================================
-      // 5. STOCK BAJO
-      // Se mantiene como información del stock actual.
-      // ========================================================
 
       const { data: insumos, error: errorInsumos } = await supabase
         .from("insumos")

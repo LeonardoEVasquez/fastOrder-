@@ -1,12 +1,3 @@
-// import Carta from "./components/carta";
-
-// export default function Home() {
-//   return (
-//    <Carta />
-//   );
-// }
-
-
 "use client";
 
 import { useEffect, useState } from "react";

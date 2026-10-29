@@ -51,7 +51,6 @@ export default function HistorialVentasPage() {
     return ventas.filter((venta) => {
       const fechaVenta = new Date(venta.created_at);
 
-      // FILTRO DESDE
       if (desde) {
         const fechaDesde = new Date(`${desde}T00:00:00`);
 
@@ -60,7 +59,6 @@ export default function HistorialVentasPage() {
         }
       }
 
-      // FILTRO HASTA
       if (hasta) {
         const fechaHasta = new Date(`${hasta}T23:59:59`);
 
@@ -69,7 +67,6 @@ export default function HistorialVentasPage() {
         }
       }
 
-      // FILTRO MÉTODO DE PAGO
       if (
         metodoPago !== "Todos" &&
         venta.metodo_pago !== metodoPago
@@ -77,14 +74,12 @@ export default function HistorialVentasPage() {
         return false;
       }
 
-      // FILTRO CAJERO
       if (cajero !== "Todos") {
         if (venta.cajero !== cajero) {
           return false;
         }
       }
 
-      // BUSCAR TICKET
       if (busqueda.trim()) {
         const texto = busqueda.trim().toLowerCase();
 

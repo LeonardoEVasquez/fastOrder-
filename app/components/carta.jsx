@@ -17,7 +17,6 @@ import OptimizacionCarta from "./optimizacion-carta";
 const IMG_DEFAULT =
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80";
 
-// Tipo de ventana de personalización según categoría
 const TIPOS = {
   Hamburguesas: "hamburguesa",
   Salchipapas: "cremas",
@@ -49,10 +48,6 @@ export default function Carta() {
   const [mostrarModal, setMostrarModal] = useState(false);
 
   const [modalProducto, setModalProducto] = useState({ abierto: false, modo: "crear", producto: null });
-
-  // ============================================
-  // CARGA DE DATOS
-  // ============================================
 
   const cargarDatos = async () => {
     try {
@@ -91,11 +86,7 @@ export default function Carta() {
     );
   };
 
-  // ============================================
-  // CARRITO
-  // ============================================
 
-  // RN-20: no vender más que el stock disponible
   const puedeAgregar = (producto) => {
     if (!producto.controla_stock) return true;
     const enCarrito = pedido.filter((i) => i.id === producto.id).reduce((a, i) => a + i.cantidad, 0);
@@ -169,15 +160,10 @@ export default function Carta() {
 
   const total = pedido.reduce((acc, it) => acc + it.precio * it.cantidad, 0);
 
-  // ============================================
-  // RENDER
-  // ============================================
-
   return (
     <>
       <div className="min-h-screen bg-slate-100">
         <div className="flex min-h-screen flex-col lg:flex-row">
-          {/* SIDEBAR */}
           <aside className="w-full shrink-0 bg-slate-900 text-white shadow-xl lg:w-64">
             <div className="flex items-center gap-3 border-b border-slate-700 px-6 py-6">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500 text-xl font-black shadow-lg">F</div>
@@ -254,7 +240,6 @@ export default function Carta() {
   ) : (
               <div className="p-3 md:p-5 lg:p-6">
                 <div className="mx-auto max-w-[1500px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                  {/* ENCABEZADO */}
                   <div className="flex flex-col justify-between gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center md:px-7">
                     <div>
                       <p className="text-sm font-semibold uppercase tracking-wider text-red-500">Menú</p>
@@ -271,7 +256,6 @@ export default function Carta() {
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_390px]">
-                    {/* CARTA */}
                     <div className="min-w-0 p-4 md:p-6">
                       <div className="mb-6">
                         <h2 className="mb-3 text-lg font-bold text-slate-800">Categorías</h2>
@@ -364,7 +348,6 @@ export default function Carta() {
                       )}
                     </div>
 
-                    {/* PEDIDO */}
                     <div className="flex min-h-[500px] flex-col border-t border-slate-200 bg-slate-50 lg:border-l lg:border-t-0">
                       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-5">
                         <div>

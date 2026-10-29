@@ -23,9 +23,6 @@ const labelCls = "mb-1 block text-xs font-bold uppercase tracking-wider text-sla
 
 const num = (v) => Number(v).toLocaleString("es-PE", { maximumFractionDigits: 3 });
 
-// ============================================
-// MODAL: AJUSTE DE INVENTARIO (RN-19)
-// ============================================
 function ModalAjuste({ item, onCerrar, onListo }) {
   const [tipo, setTipo] = useState("ingreso_manual");
   const [cantidad, setCantidad] = useState("");
@@ -53,7 +50,6 @@ function ModalAjuste({ item, onCerrar, onListo }) {
       });
       if (e1) throw e1;
 
-      // Ingreso con fecha de vencimiento -> crea el lote
       if (tipo === "ingreso_manual" && vencimiento) {
         const { error: e2 } = await supabase.from("lotes_inventario").insert([
           {
@@ -141,9 +137,6 @@ function ModalAjuste({ item, onCerrar, onListo }) {
   );
 }
 
-// ============================================
-// MODAL: NUEVO INSUMO
-// ============================================
 function ModalInsumo({ onCerrar, onListo }) {
   const [nombre, setNombre] = useState("");
   const [unidad, setUnidad] = useState("unidad");
@@ -214,9 +207,6 @@ function ModalInsumo({ onCerrar, onListo }) {
   );
 }
 
-// ============================================
-// PANTALLA PRINCIPAL
-// ============================================
 export default function Inventario() {
   const [tab, setTab] = useState("stock");
   const [stock, setStock] = useState([]);

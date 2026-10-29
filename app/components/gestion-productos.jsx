@@ -32,7 +32,6 @@ export default function GestionProductos({
     return true;
   });
 
-  // RF-01-03: desactivación lógica (nunca se borra físicamente)
   const toggleActivo = async (producto) => {
     const nuevo = !producto.activo;
     const { error } = await supabase

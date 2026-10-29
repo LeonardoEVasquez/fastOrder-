@@ -124,22 +124,7 @@ export default function LoginPage() {
 
             {/* Encabezado */}
             <div className="mb-9">
-              {/* <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-xl border border-[#e5483f]/25 bg-[#e5483f]/10 text-[#f16a60]">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  className="h-6 w-6"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5m5 5H3"
-                  />
-                </svg>
-              </div> */}
+              
 
               <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-[#f16a60]">
                 ACCESO A TU CUENTA

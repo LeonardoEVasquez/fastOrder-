@@ -17,7 +17,6 @@ const inputCls =
 
 const soles = (n) => `S/ ${Number(n || 0).toFixed(2)}`;
 
-// Gráfico de barras horizontales simple (sin librerías)
 function Barras({ titulo, datos, color = "bg-blue-500" }) {
   const max = Math.max(...datos.map((d) => d.valor), 0);
   return (

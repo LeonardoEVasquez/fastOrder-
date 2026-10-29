@@ -61,8 +61,6 @@ export default function PersonalizarProducto({ producto, tipo, onGuardar, onCanc
   const precioBase = Number(producto.precio_venta);
   const precioFinal = tipo === "alitas" ? precioBase + salsas.length * PRECIO_SALSA : precioBase;
 
-  // personalizacion -> se muestra y se guarda como JSON
-  // opciones -> filas para pedido_detalle_opciones (tipo, nombre, precio_adicional)
   const guardar = () => {
     let personalizacion = {};
     let opciones = [];

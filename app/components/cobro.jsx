@@ -89,8 +89,6 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
 
     try {
       setGuardando(true);
-
-      // 1. Pedido (el número diario lo asigna la BD)
       const { data: ped, error: e1 } = await supabase
         .from("pedidos")
         .insert({
@@ -103,7 +101,6 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
       if (e1) throw e1;
       pedidoId = ped.id;
 
-      // 2. Detalles
       const filas = pedido.map((item) => ({
         pedido_id: pedidoId,
         producto_id: item.id,
@@ -122,7 +119,6 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
         .select("id");
       if (e2) throw e2;
 
-      // 3. Opciones (salsas, extras, retirables)
       const opciones = pedido.flatMap((item, i) =>
         (item.opciones || []).map((o) => ({ detalle_id: dets[i].id, ...o }))
       );
@@ -131,7 +127,6 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
         if (e3) throw e3;
       }
 
-      // 4. Cobro: crea la venta, pagos, vuelto y descuenta stock (una sola vez)
       const pago = { metodo: metodoPago, monto: totalR };
       if (esEfectivo) pago.monto_recibido = recibido;
       const { error: e4 } = await supabase.rpc("registrar_venta", {
@@ -140,18 +135,15 @@ export default function Cobro({ pedido, total, onPedidoExitoso }) {
       });
       if (e4) throw e4;
 
-     // Cerrar el modal y actualizar el DOM antes de imprimir.
-flushSync(() => {
-  setMostrarModal(false);
-});
+      flushSync(() => {
+        setMostrarModal(false);
+      });
 
-// Imprimir antes de que el callback pueda limpiar el carrito.
-window.print();
+      window.print();
 
 onPedidoExitoso?.(ped.numero_dia);
     } catch (err) {
       console.error("Error al registrar pedido:", err);
-      // Si falló el cobro, se elimina el pedido huérfano
       if (pedidoId) await supabase.from("pedidos").delete().eq("id", pedidoId);
       const msg = String(err.message || err);
       alert(
@@ -281,35 +273,30 @@ onPedidoExitoso?.(ped.numero_dia);
 
       
 
-{/* COMANDA EXCLUSIVA PARA IMPRESIÓN */}
-{/* COMANDA EXCLUSIVA PARA IMPRESIÓN */}
-<div className="comanda-impresion">
-  <p className="comanda-cliente">
-    Pedido:
-  </p>
-
-  <p className="comanda-cliente">
-    Cliente: {nombreCliente.trim() || "Cliente General"}
-  </p>
-
-  {pedido.map((item, i) => (
-    <div key={`${item.id}-${i}`} className="comanda-producto">
-      <p className="comanda-nombre">
-        {item.cantidad} x {item.nombre}
-      </p>
-
-      {textoPersonalizacion(item.personalizacion) && (
-        <p className="comanda-detalle">
-          {textoPersonalizacion(item.personalizacion)}
+      <div className="comanda-impresion">
+        <p className="comanda-cliente">
+          Pedido:
         </p>
-      )}
-    </div>
-  ))}
-</div>
 
+        <p className="comanda-cliente">
+          Cliente: {nombreCliente.trim() || "Cliente General"}
+        </p>
 
+        {pedido.map((item, i) => (
+          <div key={`${item.id}-${i}`} className="comanda-producto">
+            <p className="comanda-nombre">
+              {item.cantidad} x {item.nombre}
+            </p>
 
-      {/* MODAL DE CONFIRMACIÓN */}
+            {textoPersonalizacion(item.personalizacion) && (
+              <p className="comanda-detalle">
+                {textoPersonalizacion(item.personalizacion)}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
       {mostrarModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm print:static print:block print:bg-white print:p-0 print:backdrop-blur-none">
   <div className="ticket-impresion flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl print:block">
@@ -318,13 +305,6 @@ onPedidoExitoso?.(ped.numero_dia);
                 <p className="text-xs font-extrabold uppercase tracking-widest text-blue-600">FastOrder</p>
                 <h2 className="text-xl font-extrabold text-slate-800">Resumen del Pedido</h2>
               </div>
-              {/* <button
-                type="button"
-                onClick={() => setMostrarModal(false)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-xl font-bold text-slate-500 hover:bg-slate-200"
-              >
-                ×
-              </button> */}
             </div>
 
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-100 p-4 print:block print:overflow-visible print:bg-white print:p-0">
@@ -355,24 +335,6 @@ onPedidoExitoso?.(ped.numero_dia);
               </div>
               <ListaProductos pedido={pedido} />
             </div>
-
-            {/* <div className="flex justify-end gap-3 border-t border-slate-200 bg-white p-4">
-              <button
-                type="button"
-                onClick={() => setMostrarModal(false)}
-                className="rounded-xl border border-slate-300 px-6 py-3 font-bold text-slate-700 hover:bg-slate-100"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={guardando}
-                onClick={confirmarPedido}
-                className="rounded-xl bg-blue-600 px-6 py-3 font-bold text-white shadow-md shadow-blue-200 hover:bg-blue-700 disabled:opacity-50"
-              >
-                {guardando ? "Guardando pedido..." : "Confirmar e Imprimir"}
-              </button>
-            </div> */}
             
             <div className="print:hidden flex justify-end gap-3 border-t border-slate-200 bg-white p-4">
               <button

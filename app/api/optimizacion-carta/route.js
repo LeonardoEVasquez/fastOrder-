@@ -30,7 +30,6 @@ export async function POST(request) {
       );
     }
 
-    // Solo aceptamos los campos necesarios para las recomendaciones.
     const productosLimpios = productos.map((producto) => ({
       id: String(producto.id ?? "").slice(0, 100),
       nombre: String(producto.nombre ?? "").slice(0, 120),

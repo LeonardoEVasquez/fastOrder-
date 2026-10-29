@@ -11,7 +11,7 @@ const labelCls = "mb-1 block text-xs font-bold uppercase tracking-wider text-sla
 
 export default function ModalProducto({
   abierto,
-  modo = "crear", // "crear" | "editar"
+  modo = "crear", 
   producto = null,
   categorias = [],
   categoriaActivaId = null,
@@ -143,7 +143,6 @@ if (archivoImagen) {
       };
 
       if (modo === "crear") {
-        // Stock inicial solo al crear (luego se ajusta con ajustar_inventario, RN-19)
         payload.stock_actual = controlaStock ? actNum : 0;
         const { data, error: errInsert } = await supabase.from("productos").insert([payload]).select();
         if (errInsert) throw errInsert;
@@ -255,69 +254,68 @@ if (archivoImagen) {
           </div>
 
           
-{/* IMAGEN DEL PRODUCTO */}
-<div>
-  <label className={labelCls}>Imagen del producto</label>
+          {/* IMAGEN DEL PRODUCTO */}
+          <div>
+            <label className={labelCls}>Imagen del producto</label>
 
-  <input
-    type="file"
-    accept="image/jpeg,image/png,image/webp,image/gif"
-    onChange={(e) => {
-      const archivo = e.target.files?.[0];
-      if (!archivo) return;
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={(e) => {
+                const archivo = e.target.files?.[0];
+                if (!archivo) return;
 
-      const tiposPermitidos = [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ];
+                const tiposPermitidos = [
+                  "image/jpeg",
+                  "image/png",
+                  "image/webp",
+                  "image/gif",
+                ];
 
-      if (!tiposPermitidos.includes(archivo.type)) {
-        setError("Selecciona una imagen JPG, PNG, WEBP o GIF.");
-        e.target.value = "";
-        return;
-      }
+                if (!tiposPermitidos.includes(archivo.type)) {
+                  setError("Selecciona una imagen JPG, PNG, WEBP o GIF.");
+                  e.target.value = "";
+                  return;
+                }
 
-      if (archivo.size > 5 * 1024 * 1024) {
-        setError("La imagen no puede superar los 5 MB.");
-        e.target.value = "";
-        return;
-      }
+                if (archivo.size > 5 * 1024 * 1024) {
+                  setError("La imagen no puede superar los 5 MB.");
+                  e.target.value = "";
+                  return;
+                }
 
-      setError(null);
-      setArchivoImagen(archivo);
-      setVistaPrevia(URL.createObjectURL(archivo));
-    }}
-    className={inputCls}
-  />
+                setError(null);
+                setArchivoImagen(archivo);
+                setVistaPrevia(URL.createObjectURL(archivo));
+              }}
+              className={inputCls}
+            />
 
-  <p className="mt-1 text-xs text-slate-500">
-    Selecciona una imagen de tu computadora. Máximo 5 MB.
-  </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Selecciona una imagen de tu computadora. Máximo 5 MB.
+            </p>
 
-  {(vistaPrevia || imagen) && (
-    <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <img
-        src={vistaPrevia || imagen}
-        alt="Vista previa del producto"
-        className="h-20 w-20 rounded-lg object-cover"
-      />
+            {(vistaPrevia || imagen) && (
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <img
+                  src={vistaPrevia || imagen}
+                  alt="Vista previa del producto"
+                  className="h-20 w-20 rounded-lg object-cover"
+                />
 
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-slate-700">
-          {archivoImagen ? archivoImagen.name : "Imagen actual"}
-        </p>
-        <p className="text-xs text-slate-500">
-          {archivoImagen
-            ? `${(archivoImagen.size / 1024 / 1024).toFixed(2)} MB`
-            : "Selecciona otra imagen para reemplazarla."}
-        </p>
-      </div>
-    </div>
-  )}
-</div>
-
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-700">
+                    {archivoImagen ? archivoImagen.name : "Imagen actual"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {archivoImagen
+                      ? `${(archivoImagen.size / 1024 / 1024).toFixed(2)} MB`
+                      : "Selecciona otra imagen para reemplazarla."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* CONTROL DE STOCK */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
